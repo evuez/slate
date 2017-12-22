@@ -15,21 +15,29 @@ import System.Directory
   )
 import System.FilePath.Posix (takeBaseName)
 
+type Slate = String
+
+type Note = String
+
+type NoteId = Int
+
+type Filter = String
+
 data Command
-  = Add String
-        String -- Add a note
-  | Check String
-          Int -- Check a note
-  | Uncheck String
-            Int -- Uncheck a note
-  | Remove String
-           Int -- Remove a note
-  | Display String
-            String -- Display a slate
-  | Rename String
-           String -- Rename a slate
-  | Wipe String
-         String -- Remove all notes in a slate
+  = Add Slate
+        Note
+  | Done Slate
+         NoteId
+  | Todo Slate
+         NoteId
+  | Remove Slate
+           NoteId
+  | Display Slate
+            Filter
+  | Rename Slate
+           Slate
+  | Wipe Slate
+         Filter
   deriving (Eq, Show)
 
 -- Parsers
@@ -43,11 +51,11 @@ name =
 add :: Parser Command
 add = Add <$> name <*> argument str (metavar "NOTE")
 
-check :: Parser Command
-check = Check <$> name <*> argument auto (metavar "NOTE ID")
+done :: Parser Command
+done = Done <$> name <*> argument auto (metavar "NOTE ID")
 
-uncheck :: Parser Command
-uncheck = Uncheck <$> name <*> argument auto (metavar "NOTE ID")
+todo :: Parser Command
+todo = Todo <$> name <*> argument auto (metavar "NOTE ID")
 
 remove :: Parser Command
 remove = Remove <$> name <*> argument auto (metavar "NOTE ID")
@@ -57,7 +65,7 @@ display =
   Display <$> name <*>
   option
     str
-    (long "only" <> short 'o' <> help "Display only checked / unchecked notes." <>
+    (long "only" <> short 'o' <> help "Display only done / todo notes." <>
      value "")
 
 rename :: Parser Command
@@ -70,15 +78,14 @@ wipe =
   Wipe <$> name <*>
   option
     str
-    (long "only" <> short 'o' <> help "Wipe only checked / unchecked notes." <>
-     value "")
+    (long "only" <> short 'o' <> help "Wipe only done / todo notes." <> value "")
 
 parser :: Parser Command
 parser =
   subparser
     (command "add" (info add (progDesc "Add a note.")) <>
-     command "check" (info check (progDesc "Check a note.")) <>
-     command "uncheck" (info uncheck (progDesc "Uncheck a note.")) <>
+     command "done" (info done (progDesc "Mark a note as done.")) <>
+     command "todo" (info todo (progDesc "Mark a note as to-do.")) <>
      command "remove" (info remove (progDesc "Remove a note.")) <>
      command "display" (info display (progDesc "Display a slate.")) <>
      command "rename" (info rename (progDesc "Rename a slate.")) <>
@@ -89,10 +96,10 @@ execute :: Command -> IO ()
 execute (Add "" n) = getSlateName >>= (\s -> execute (Add s n))
 execute (Add s n) =
   getSlatePath s >>= (\x -> appendFile x (" - [ ] " ++ n ++ "\n"))
-execute (Check "" n) = getSlateName >>= (\x -> execute (Check x n))
-execute (Check s n) = getSlatePath s >>= (\x -> checkNote x n)
-execute (Uncheck "" n) = getSlateName >>= (\x -> execute (Uncheck x n))
-execute (Uncheck s n) = getSlatePath s >>= (\x -> uncheckNote x n)
+execute (Done "" n) = getSlateName >>= (\x -> execute (Done x n))
+execute (Done s n) = getSlatePath s >>= (\x -> markAsDone x n)
+execute (Todo "" n) = getSlateName >>= (\x -> execute (Todo x n))
+execute (Todo s n) = getSlatePath s >>= (\x -> markAsTodo x n)
 execute (Remove "" n) = getSlateName >>= (\x -> execute (Remove x n))
 execute (Remove s n) = getSlatePath s >>= (\x -> removeNote x n)
 execute (Display "" f) = getSlateName >>= (\x -> execute (Display x f))
@@ -126,14 +133,14 @@ displaySlate s "" = do
   contents <- readFile s
   let notes = zipWith displayNote [0 ..] (lines contents)
   putStr $ unlines notes
-displaySlate s "checked" = do
+displaySlate s "done" = do
   contents <- readFile s
   let notes = zipWith displayNote [0 ..] (lines contents)
-  putStr $ unlines $ filter isNoteChecked notes
-displaySlate s "unchecked" = do
+  putStr $ unlines $ filter isNoteDone notes
+displaySlate s "todo" = do
   contents <- readFile s
   let notes = zipWith displayNote [0 ..] (lines contents)
-  putStr $ unlines $ filter (not . isNoteChecked) notes
+  putStr $ unlines $ filter (not . isNoteDone) notes
 displaySlate _ f = putStr $ "\"" ++ f ++ "\" is not a valid filter."
 
 displayNote :: Int -> String -> String
@@ -144,16 +151,16 @@ displayNote line _ =
   "\x1B[31m" ++
   padInt line 2 ++ " - Parsing error: line is malformed" ++ "\x1B[0m"
 
-isNoteChecked :: String -> Bool
-isNoteChecked (' ':'-':' ':'[':'x':']':_) = True
-isNoteChecked ('\x1B':_) = True
-isNoteChecked _ = False
+isNoteDone :: String -> Bool
+isNoteDone (' ':'-':' ':'[':'x':']':_) = True
+isNoteDone ('\x1B':_) = True
+isNoteDone _ = False
 
 padInt :: Int -> Int -> String
 padInt n s = replicate (s - length (show n)) '0' ++ show n
 
-checkNote :: FilePath -> Int -> IO ()
-checkNote s n = do
+markAsDone :: FilePath -> Int -> IO ()
+markAsDone s n = do
   contents <- readFile s
   let (x, y:t) = splitAt n (lines contents)
       c =
@@ -164,8 +171,8 @@ checkNote s n = do
   writeFile (s ++ ".tmp") (unlines $ x ++ c : t)
   renameFile tmp s
 
-uncheckNote :: FilePath -> Int -> IO ()
-uncheckNote s n = do
+markAsTodo :: FilePath -> Int -> IO ()
+markAsTodo s n = do
   contents <- readFile s
   let (x, y:t) = splitAt n (lines contents)
       c =
@@ -191,14 +198,14 @@ renameSlate sc sn = do
   renameFile current new
 
 wipeSlate :: FilePath -> String -> IO ()
-wipeSlate s "checked" = do
+wipeSlate s "done" = do
   contents <- readFile s
   let tmp = s ++ ".tmp"
-  writeFile tmp $ unlines $ filter (not . isNoteChecked) (lines contents)
+  writeFile tmp $ unlines $ filter (not . isNoteDone) (lines contents)
   renameFile tmp s
-wipeSlate s "unchecked" = do
+wipeSlate s "todo" = do
   contents <- readFile s
   let tmp = s ++ ".tmp"
-  writeFile tmp $ unlines $ filter isNoteChecked (lines contents)
+  writeFile tmp $ unlines $ filter isNoteDone (lines contents)
   renameFile tmp s
 wipeSlate _ f = putStr $ "\"" ++ f ++ "\" is not a valid filter."

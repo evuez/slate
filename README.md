@@ -26,8 +26,8 @@ Available options:
 
 Available commands:
   add                      Add a note.
-  check                    Check a note.
-  uncheck                  Uncheck a note.
+  done                     Mark a note as done.
+  todo                     Mark a note as to-do.
   remove                   Remove a note.
   display                  Display a slate.
   rename                   Rename a slate.
@@ -39,12 +39,12 @@ $ slate display
 00 - My first note.
 01 - New note!
 
-$ slate check 0
+$ slate done 0
 $ slate display
 <s>00 - My first note.</s>
 01 - New note!
 
-$ slate display --only=unchecked
+$ slate display --only=todo
 01 - New note!
 
 $ slate add "Fake note"
@@ -58,11 +58,11 @@ $ slate display
 <s>00 - My first note.</s>
 01 - New note!
 
-$ slate wipe --only=unchecked
+$ slate wipe --only=todo
 $ slate display
 <s>00 - My first note.</s>
 
-$ slate uncheck 0
+$ slate todo 0
 $ slate display
 00 - My first note.
 </pre>
