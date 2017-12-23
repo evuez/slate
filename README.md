@@ -3,12 +3,13 @@
 A simple tool to take notes from your terminal.
 
 Generates markdown [task lists](https://help.github.com/articles/about-task-lists/).
-Lists are stored in `~/.config/slate/`.
+
+Lists are stored in `~/.config/slate/` and their default name is the name of your current directory. You can use any other name you want using the `--name` option.
 
 ## Install
 
 ```shell
-$ stack install
+$ stack install slate
 ```
 
 ## Usage
