@@ -4,6 +4,7 @@ module Lib
   , parser
   ) where
 
+import AnsiStyle (toAnsi)
 import Data.Semigroup ((<>))
 import Options.Applicative
 import System.Directory
@@ -144,9 +145,10 @@ displaySlate s "todo" = do
 displaySlate _ f = putStr $ "\"" ++ f ++ "\" is not a valid filter."
 
 displayNote :: Int -> String -> String
-displayNote line (' ':'-':' ':'[':' ':']':note) = padInt line 2 ++ " -" ++ note
+displayNote line (' ':'-':' ':'[':' ':']':note) =
+  padInt line 2 ++ " -" ++ (toAnsi note)
 displayNote line (' ':'-':' ':'[':'x':']':note) =
-  "\x1B[9m" ++ padInt line 2 ++ " -" ++ note ++ "\x1B[0m"
+  "\x1B[9m" ++ padInt line 2 ++ " -" ++ (toAnsi note) ++ "\x1B[0m"
 displayNote line _ =
   "\x1B[31m" ++
   padInt line 2 ++ " - Parsing error: line is malformed" ++ "\x1B[0m"

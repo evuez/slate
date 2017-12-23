@@ -34,10 +34,10 @@ Available commands:
   rename                   Rename a slate.
   wipe                     Wipe a slate.
 
-$ slate add "My first note."
+$ slate add "My *first* note."
 $ slate add "New note!"
 $ slate display
-00 - My first note.
+00 - My <b>first</b> note.
 01 - New note!
 
 $ slate done 0
