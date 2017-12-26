@@ -1,4 +1,6 @@
 # slate - a note taking tool.
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fevuez%2Fslate.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fevuez%2Fslate?ref=badge_shield)
+
 
 A simple tool to take notes from your terminal.
 
@@ -67,3 +69,7 @@ $ slate todo 0
 $ slate display
 00 - My first note.
 </pre>
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fevuez%2Fslate.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fevuez%2Fslate?ref=badge_large)
