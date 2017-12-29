@@ -42,7 +42,7 @@ $ slate display
 
 $ slate done 0
 $ slate display
-<s>00 - My first note.</s>
+<s>00 - My <b>first</b> note.</s>
 01 - New note!
 
 $ slate display --only=todo
@@ -50,20 +50,20 @@ $ slate display --only=todo
 
 $ slate add "Fake note"
 $ slate display
-<s>00 - My first note.</s>
+<s>00 - My <b>first</b> note.</s>
 01 - New note!
 02 - Fake note
 
 $ slate remove 2
 $ slate display
-<s>00 - My first note.</s>
+<s>00 - My <b>first</b> note.</s>
 01 - New note!
 
 $ slate wipe --only=todo
 $ slate display
-<s>00 - My first note.</s>
+<s>00 - My <b>first</b> note.</s>
 
 $ slate todo 0
 $ slate display
-00 - My first note.
+00 - My <b>first</b> note.
 </pre>
