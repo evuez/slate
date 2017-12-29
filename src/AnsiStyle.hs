@@ -5,6 +5,7 @@ module AnsiStyle
 data Style
   = Normal
   | Emphasized
+  | Code
   deriving (Show)
 
 data Text = Text
@@ -16,8 +17,10 @@ data Text = Text
 getStyle :: Style -> Char -> (Style, String)
 getStyle Normal '*' = (Emphasized, "\x1B[1m")
 getStyle Normal '_' = (Emphasized, "\x1B[1m")
-getStyle Emphasized '*' = (Normal, "\x1B[0m")
-getStyle Emphasized '_' = (Normal, "\x1B[0m")
+getStyle Normal '`' = (Code, "\x1B[4m")
+getStyle Emphasized '*' = (Normal, "\x1B[21m")
+getStyle Emphasized '_' = (Normal, "\x1B[21m")
+getStyle Code '`' = (Normal, "\x1B[24m")
 getStyle s c = (s, [c])
 
 toAnsi :: String -> String
