@@ -27,8 +27,10 @@ Available options:
 
 Available commands:
   add                      Add a note.
-  done                     Mark a note as done.
-  todo                     Mark a note as to-do.
+  done                     Mark a note as done when given a note ID, display
+                           done notes otherwise.
+  todo                     Mark a note as todo when given a note ID, display
+                           todo notes otherwise.
   remove                   Remove a note.
   display                  Display a slate.
   rename                   Rename a slate.
@@ -45,7 +47,7 @@ $ slate display
 <s>00 - My <b>first</b> note.</s>
 01 - New note!
 
-$ slate display --only=todo
+$ slate display --only=todo # or just slate todo
 01 - New note!
 
 $ slate add "Fake note"

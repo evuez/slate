@@ -22,15 +22,17 @@ type Note = String
 
 type NoteId = Int
 
+type MaybeNoteId = Maybe Int
+
 type Filter = String
 
 data Command
   = Add Slate
         Note
   | Done Slate
-         NoteId
+         MaybeNoteId
   | Todo Slate
-         NoteId
+         MaybeNoteId
   | Remove Slate
            NoteId
   | Display Slate
@@ -53,10 +55,10 @@ add :: Parser Command
 add = Add <$> name <*> argument str (metavar "NOTE")
 
 done :: Parser Command
-done = Done <$> name <*> argument auto (metavar "NOTE ID")
+done = Done <$> name <*> optional (argument auto (metavar "NOTE ID"))
 
 todo :: Parser Command
-todo = Todo <$> name <*> argument auto (metavar "NOTE ID")
+todo = Todo <$> name <*> optional (argument auto (metavar "NOTE ID"))
 
 remove :: Parser Command
 remove = Remove <$> name <*> argument auto (metavar "NOTE ID")
@@ -85,8 +87,18 @@ parser :: Parser Command
 parser =
   subparser
     (command "add" (info add (progDesc "Add a note.")) <>
-     command "done" (info done (progDesc "Mark a note as done.")) <>
-     command "todo" (info todo (progDesc "Mark a note as to-do.")) <>
+     command
+       "done"
+       (info
+          done
+          (progDesc
+             "Mark a note as done when given a note ID, display done notes otherwise.")) <>
+     command
+       "todo"
+       (info
+          todo
+          (progDesc
+             "Mark a note as todo when given a note ID, display todo notes otherwise.")) <>
      command "remove" (info remove (progDesc "Remove a note.")) <>
      command "display" (info display (progDesc "Display a slate.")) <>
      command "rename" (info rename (progDesc "Rename a slate.")) <>
@@ -98,9 +110,11 @@ execute (Add "" n) = getSlateName >>= (\s -> execute (Add s n))
 execute (Add s n) =
   getSlatePath s >>= (\x -> appendFile x (" - [ ] " ++ n ++ "\n"))
 execute (Done "" n) = getSlateName >>= (\x -> execute (Done x n))
-execute (Done s n) = getSlatePath s >>= (\x -> markAsDone x n)
+execute (Done s (Just n)) = getSlatePath s >>= (\x -> markAsDone x n)
+execute (Done s Nothing) = getSlatePath s >>= (\x -> displaySlate x "done")
 execute (Todo "" n) = getSlateName >>= (\x -> execute (Todo x n))
-execute (Todo s n) = getSlatePath s >>= (\x -> markAsTodo x n)
+execute (Todo s (Just n)) = getSlatePath s >>= (\x -> markAsTodo x n)
+execute (Todo s Nothing) = getSlatePath s >>= (\x -> displaySlate x "todo")
 execute (Remove "" n) = getSlateName >>= (\x -> execute (Remove x n))
 execute (Remove s n) = getSlatePath s >>= (\x -> removeNote x n)
 execute (Display "" f) = getSlateName >>= (\x -> execute (Display x f))
