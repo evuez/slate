@@ -1,6 +1,6 @@
 # slate - a note taking tool.
 
-A simple tool to take notes from your terminal.
+A simple tool to take notes from your terminal (and sync them between your devices).
 
 Generates markdown [task lists](https://help.github.com/articles/about-task-lists/).
 
@@ -12,7 +12,7 @@ Lists are stored in `~/.config/slate/` and their default name is the name of you
 $ stack install slate
 ```
 
-## Usage
+## Basic usage
 
 <pre>
 $ slate --help
@@ -35,6 +35,7 @@ Available commands:
   display                  Display a slate.
   rename                   Rename a slate.
   wipe                     Wipe a slate.
+  sync                     Sync every slate.
 
 $ slate add "My *first* note."
 $ slate add "New note!"
@@ -69,3 +70,13 @@ $ slate todo 0
 $ slate display
 00 - My <b>first</b> note.
 </pre>
+
+## The `sync` command
+
+You can use `slate sync` to synchronize your slates. There's no default configuration for this command, you'll have to create the file `~/.config/slate/config.toml` and add your sync command, for example:
+
+```toml
+sync = "git add . && git commit -m 'Update slates'; git pull --rebase origin master && git push origin master"
+```
+
+This would stage & commit every updates in `~/.config/slate/`, update your local copy and push your updates to the `origin` remote.

@@ -5,7 +5,10 @@ module Lib
   ) where
 
 import AnsiStyle (toAnsi)
+import qualified Data.HashMap.Lazy as M (lookup)
 import Data.Semigroup ((<>))
+import Data.String (fromString)
+import Data.String.Conversions (convertString)
 import Options.Applicative
 import System.Directory
   ( createDirectoryIfMissing
@@ -15,6 +18,9 @@ import System.Directory
   , renameFile
   )
 import System.FilePath.Posix (takeBaseName)
+import System.Process (createProcess, cwd, shell, waitForProcess)
+import Text.Toml (parseTomlDoc)
+import Text.Toml.Types (Node(VString))
 
 type Slate = String
 
@@ -41,6 +47,7 @@ data Command
            Slate
   | Wipe Slate
          Filter
+  | Sync
   deriving (Eq, Show)
 
 -- Parsers
@@ -83,6 +90,9 @@ wipe =
     str
     (long "only" <> short 'o' <> help "Wipe only done / todo notes." <> value "")
 
+sync :: Command
+sync = Sync
+
 parser :: Parser Command
 parser =
   subparser
@@ -102,7 +112,8 @@ parser =
      command "remove" (info remove (progDesc "Remove a note.")) <>
      command "display" (info display (progDesc "Display a slate.")) <>
      command "rename" (info rename (progDesc "Rename a slate.")) <>
-     command "wipe" (info wipe (progDesc "Wipe a slate.")))
+     command "wipe" (info wipe (progDesc "Wipe a slate.")) <>
+     command "sync" (info (pure sync) (progDesc "Sync every slate.")))
 
 -- Commands
 execute :: Command -> IO ()
@@ -123,6 +134,7 @@ execute (Rename sc sn) = renameSlate sc sn
 execute (Wipe "" f) = getSlateName >>= (\x -> execute (Wipe x f))
 execute (Wipe s "") = getSlatePath s >>= removeFile
 execute (Wipe s f) = getSlatePath s >>= (\x -> wipeSlate x f)
+execute (Sync) = syncSlates
 
 -- Helpers
 initialize :: IO ()
@@ -137,6 +149,11 @@ getConfigDirectory :: IO String
 getConfigDirectory = do
   home <- getHomeDirectory
   return $ home ++ "/.config/slate/"
+
+getConfigFile :: IO String
+getConfigFile = do
+  dir <- getConfigDirectory
+  return $ dir ++ "config.toml"
 
 getSlatePath :: String -> IO FilePath
 getSlatePath s = do
@@ -225,3 +242,14 @@ wipeSlate s "todo" = do
   writeFile tmp $ unlines $ filter isNoteDone (lines contents)
   renameFile tmp s
 wipeSlate _ f = putStr $ "\"" ++ f ++ "\" is not a valid filter."
+
+syncSlates :: IO ()
+syncSlates = do
+  config <- (getConfigFile >>= readFile)
+  dir <- getConfigDirectory
+  let Right c = parseTomlDoc "" (fromString config)
+  let Just (VString s) = M.lookup (fromString "sync") c
+  (_, _, _, h) <-
+    createProcess (shell (fromString $ convertString s)) {cwd = Just dir}
+  _ <- waitForProcess h
+  return ()
