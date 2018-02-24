@@ -122,24 +122,17 @@ parser =
 
 -- Commands
 execute :: Command -> IO ()
-execute (Add "" n) = getSlateName >>= (\s -> execute (Add s n))
 execute (Add s n) =
   getSlatePath s >>= (\x -> appendFile x (" - [ ] " ++ n ++ "\n"))
-execute (Done "" n) = getSlateName >>= (\x -> execute (Done x n))
 execute (Done s (Just n)) = getSlatePath s >>= (\x -> markAsDone x n)
 execute (Done s Nothing) = getSlatePath s >>= (\x -> displaySlate x "done")
-execute (Todo "" n) = getSlateName >>= (\x -> execute (Todo x n))
 execute (Todo s (Just n)) = getSlatePath s >>= (\x -> markAsTodo x n)
 execute (Todo s Nothing) = getSlatePath s >>= (\x -> displaySlate x "todo")
-execute (Remove "" n) = getSlateName >>= (\x -> execute (Remove x n))
 execute (Remove s n) = getSlatePath s >>= (\x -> removeNote x n)
-execute (Display "" f) = getSlateName >>= (\x -> execute (Display x f))
 execute (Display s f) = getSlatePath s >>= (\x -> displaySlate x f)
 execute (Rename sc sn) = renameSlate sc sn
-execute (Wipe "" f) = getSlateName >>= (\x -> execute (Wipe x f))
 execute (Wipe s "") = getSlatePath s >>= removeFile
 execute (Wipe s f) = getSlatePath s >>= (\x -> wipeSlate x f)
-execute (Status "") = getSlateName >>= (\x -> execute (Status x))
 execute (Status s) = getSlatePath s >>= (\x -> displayStatus x)
 execute (Sync) = syncSlates
 
@@ -163,6 +156,10 @@ getConfigFile = do
   return $ dir ++ "config.toml"
 
 getSlatePath :: String -> IO FilePath
+getSlatePath "" = do
+  s <- getSlateName
+  dir <- getConfigDirectory
+  return $ dir ++ s ++ ".md"
 getSlatePath s = do
   dir <- getConfigDirectory
   return $ dir ++ s ++ ".md"
