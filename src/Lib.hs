@@ -47,6 +47,7 @@ data Command
            Slate
   | Wipe Slate
          Filter
+  | Status Slate
   | Sync
   deriving (Eq, Show)
 
@@ -90,6 +91,9 @@ wipe =
     str
     (long "only" <> short 'o' <> help "Wipe only done / todo notes." <> value "")
 
+status :: Parser Command
+status = Status <$> name
+
 sync :: Command
 sync = Sync
 
@@ -113,6 +117,7 @@ parser =
      command "display" (info display (progDesc "Display a slate.")) <>
      command "rename" (info rename (progDesc "Rename a slate.")) <>
      command "wipe" (info wipe (progDesc "Wipe a slate.")) <>
+     command "status" (info status (progDesc "Display the status of a slate.")) <>
      command "sync" (info (pure sync) (progDesc "Sync every slate.")))
 
 -- Commands
@@ -134,6 +139,8 @@ execute (Rename sc sn) = renameSlate sc sn
 execute (Wipe "" f) = getSlateName >>= (\x -> execute (Wipe x f))
 execute (Wipe s "") = getSlatePath s >>= removeFile
 execute (Wipe s f) = getSlatePath s >>= (\x -> wipeSlate x f)
+execute (Status "") = getSlateName >>= (\x -> execute (Status x))
+execute (Status s) = getSlatePath s >>= (\x -> displayStatus x)
 execute (Sync) = syncSlates
 
 -- Helpers
@@ -242,6 +249,15 @@ wipeSlate s "todo" = do
   writeFile tmp $ unlines $ filter isNoteDone (lines contents)
   renameFile tmp s
 wipeSlate _ f = putStr $ "\"" ++ f ++ "\" is not a valid filter."
+
+displayStatus :: FilePath -> IO ()
+displayStatus s = do
+  contents <- readFile s
+  let t = length $ filter isNoteDone (lines contents)
+      d = length $ filter (not . isNoteDone) (lines contents)
+  putStr $
+    (show t) ++
+    " done, " ++ (show d) ++ " todo (" ++ (show $ t + d) ++ " total)."
 
 syncSlates :: IO ()
 syncSlates = do

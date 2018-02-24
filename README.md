@@ -35,6 +35,7 @@ Available commands:
   display                  Display a slate.
   rename                   Rename a slate.
   wipe                     Wipe a slate.
+  status                   Display the status of a slate.
   sync                     Sync every slate.
 
 $ slate add "My *first* note."
@@ -50,6 +51,9 @@ $ slate display
 
 $ slate display --only=todo # or just slate todo
 01 - New note!
+
+$ slate status
+1 done, 1 todo (2 total).
 
 $ slate add "Fake note"
 $ slate display
