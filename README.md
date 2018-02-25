@@ -75,12 +75,26 @@ $ slate display
 00 - My <b>first</b> note.
 </pre>
 
-## The `sync` command
+## Configuration
 
-You can use `slate sync` to synchronize your slates. There's no default configuration for this command, you'll have to create the file `~/.config/slate/config.toml` and add your sync command, for example:
+The following configuration options can be set in `~/.config/slate/config.toml` (you'll have to create this file).
+
+### sync
+
+You can use `slate sync` to synchronize your slates. There's no default configuration for this command, so for it to work you'll have to add your own sync command, for example:
 
 ```toml
 sync = "git add . && git commit -m 'Update slates'; git pull --rebase origin master && git push origin master"
 ```
 
 This would stage & commit every updates in `~/.config/slate/`, update your local copy and push your updates to the `origin` remote.
+
+### status
+
+By default, `slate status` only displays the number of notes by status. You can add a command in the `status` key that'll be used to check if the slate is synchronized or not, for example:
+
+```toml
+status = "git diff --exit-code $SLATE"
+```
+
+Where `$SLATE` will be set to `~/.config/slate/<slate name>.md`. The command must return a non-zero exit code if the slate is out of sync and zero if it's synced.

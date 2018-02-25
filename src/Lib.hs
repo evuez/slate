@@ -17,8 +17,17 @@ import System.Directory
   , removeFile
   , renameFile
   )
+import System.Exit (ExitCode(ExitFailure, ExitSuccess))
 import System.FilePath.Posix (takeBaseName)
-import System.Process (createProcess, cwd, shell, waitForProcess)
+import System.Process
+  ( StdStream(NoStream)
+  , createProcess
+  , cwd
+  , env
+  , shell
+  , std_out
+  , waitForProcess
+  )
 import Text.Toml (parseTomlDoc)
 import Text.Toml.Types (Node(VString))
 
@@ -28,17 +37,15 @@ type Note = String
 
 type NoteId = Int
 
-type MaybeNoteId = Maybe Int
-
 type Filter = String
 
 data Command
   = Add Slate
         Note
   | Done Slate
-         MaybeNoteId
+         (Maybe NoteId)
   | Todo Slate
-         MaybeNoteId
+         (Maybe NoteId)
   | Remove Slate
            NoteId
   | Display Slate
@@ -164,6 +171,23 @@ getSlatePath s = do
   dir <- getConfigDirectory
   return $ dir ++ s ++ ".md"
 
+getConfigValue :: String -> IO (Maybe String)
+getConfigValue k = do
+  f <- getConfigFile
+  config <- readFile f
+  let Right c = parseTomlDoc "" (fromString config)
+  let vs =
+        case (M.lookup (fromString k) c) of
+          Just (VString s) -> Just (convertString s)
+          _ -> Nothing
+  return vs
+
+getConfigValueOrFail :: String -> IO String
+getConfigValueOrFail k = do
+  f <- getConfigFile
+  c <- getConfigValue k
+  return $ maybe (error $ "Key `" ++ k ++ "` not found in " ++ f ++ ".") id c
+
 displaySlate :: String -> String -> IO ()
 displaySlate s "" = do
   contents <- readFile s
@@ -249,20 +273,35 @@ wipeSlate _ f = putStr $ "\"" ++ f ++ "\" is not a valid filter."
 
 displayStatus :: FilePath -> IO ()
 displayStatus s = do
+  ss <- getSyncStatus s
   contents <- readFile s
   let t = length $ filter isNoteDone (lines contents)
       d = length $ filter (not . isNoteDone) (lines contents)
   putStr $
     (show t) ++
-    " done, " ++ (show d) ++ " todo (" ++ (show $ t + d) ++ " total)."
+    " done, " ++ (show d) ++ " todo (" ++ (show $ t + d) ++ " total)." ++ ss
+
+getSyncStatus :: FilePath -> IO String
+getSyncStatus s = do
+  v <- getConfigValue "status"
+  case v of
+    (Just c) -> do
+      d <- getConfigDirectory
+      (_, _, _, h) <-
+        createProcess
+          (shell c)
+          {cwd = Just d, std_out = NoStream, env = Just [("SLATE", s)]}
+      e <- waitForProcess h
+      return $
+        case e of
+          ExitSuccess -> " \x1B[32mSynced ☺️\x1B[1m"
+          (ExitFailure _) -> " \x1B[31mOut of sync 😕\x1B[1m"
+    Nothing -> return ""
 
 syncSlates :: IO ()
 syncSlates = do
-  config <- (getConfigFile >>= readFile)
-  dir <- getConfigDirectory
-  let Right c = parseTomlDoc "" (fromString config)
-  let Just (VString s) = M.lookup (fromString "sync") c
-  (_, _, _, h) <-
-    createProcess (shell (fromString $ convertString s)) {cwd = Just dir}
+  c <- getConfigValueOrFail "sync"
+  d <- getConfigDirectory
+  (_, _, _, h) <- createProcess (shell c) {cwd = Just d}
   _ <- waitForProcess h
-  return ()
+  putStr "\x1B[32mDone syncing ☺️\x1B[1m"
