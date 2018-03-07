@@ -275,11 +275,21 @@ displayStatus :: FilePath -> IO ()
 displayStatus s = do
   ss <- getSyncStatus s
   contents <- readFile s
-  let t = length $ filter isNoteDone (lines contents)
-      d = length $ filter (not . isNoteDone) (lines contents)
-  putStr $
+  let d = length $ filter isNoteDone (lines contents)
+      t = length $ filter (not . isNoteDone) (lines contents)
+      dd = fromIntegral d :: Double
+      dt = fromIntegral t :: Double
+      pd = round $ 28 * dd / (dt + dd)
+      pt = round $ 28 * dt / (dt + dd)
+  putStrLn $
+    (show d) ++
+    " done, " ++
     (show t) ++
-    " done, " ++ (show d) ++ " todo (" ++ (show $ t + d) ++ " total)." ++ ss
+    " todo (" ++
+    (show $ d + t) ++
+    " total).\n" ++
+    "\x1B[32m" ++
+    (replicate pd '▮') ++ "\x1B[0m" ++ (replicate pt '▮') ++ "\n" ++ ss
 
 getSyncStatus :: FilePath -> IO String
 getSyncStatus s = do
