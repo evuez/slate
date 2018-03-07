@@ -2,9 +2,9 @@
 
 A simple tool to take notes from your terminal (and sync them between your devices).
 
-Generates markdown [task lists](https://help.github.com/articles/about-task-lists/).
+![`slate status`](https://gist.github.com/evuez/ff11275ea00404472b57520cf92bfed2/raw/423813dd1ce5b6714c5a9d365b9cedb56df66978/slate-status.png)
 
-Lists are stored in `~/.config/slate/` and their default name is the name of your current directory. You can use any other name you want using the `--name` option.
+Generates markdown [task lists](https://help.github.com/articles/about-task-lists/).
 
 ## Install
 
@@ -74,6 +74,8 @@ $ slate todo 0
 $ slate display
 00 - My <b>first</b> note.
 </pre>
+
+Lists are stored in `~/.config/slate/` and their default name is the name of your current directory. You can use any other name you want using the `--name` option.
 
 ## Configuration
 
