@@ -6,6 +6,15 @@ A simple tool to take notes from your terminal (and sync them between your devic
 
 Generates markdown [task lists](https://help.github.com/articles/about-task-lists/).
 
+**Table of contents**
+
+ - [Install](#install)
+ - [Basic usage](#basic-usage)
+ - [Configuration](#configuration)
+    - [sync](#sync)
+    - [status](#status)
+ - [Autocompletion](#autocompletion)
+
 ## Install
 
 ```shell
@@ -100,3 +109,11 @@ status = "git diff --exit-code $SLATE"
 ```
 
 Where `$SLATE` will be set to `~/.config/slate/<slate name>.md`. The command must return a non-zero exit code if the slate is out of sync and zero if it's synced.
+
+## Autocompletion
+
+You can use the following commands to generate a completion script for your shell:
+
+  - Bash: `slate --bash-completion-script $(which slate)`
+  - Zsh: `slate --zsh-completion-script $(which slate)`
+  - Fish: `slate --fish-completion-script (which slate)`
