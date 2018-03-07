@@ -201,7 +201,7 @@ displaySlate s "todo" = do
   contents <- readFile s
   let notes = zipWith displayNote [0 ..] (lines contents)
   putStr $ unlines $ filter (not . isNoteDone) notes
-displaySlate _ f = putStr $ "\"" ++ f ++ "\" is not a valid filter."
+displaySlate _ f = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
 
 displayNote :: Int -> String -> String
 displayNote line (' ':'-':' ':'[':' ':']':note) =
@@ -269,7 +269,7 @@ wipeSlate s "todo" = do
   let tmp = s ++ ".tmp"
   writeFile tmp $ unlines $ filter isNoteDone (lines contents)
   renameFile tmp s
-wipeSlate _ f = putStr $ "\"" ++ f ++ "\" is not a valid filter."
+wipeSlate _ f = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
 
 displayStatus :: FilePath -> IO ()
 displayStatus s = do
@@ -294,8 +294,8 @@ getSyncStatus s = do
       e <- waitForProcess h
       return $
         case e of
-          ExitSuccess -> " \x1B[32mSynced ☺️\x1B[1m"
-          (ExitFailure _) -> " \x1B[31mOut of sync 😕\x1B[1m"
+          ExitSuccess -> "\x1B[32mSynced ☺️\x1B[0m"
+          (ExitFailure _) -> "\x1B[31mOut of sync 😕\x1B[0m"
     Nothing -> return ""
 
 syncSlates :: IO ()
@@ -304,4 +304,4 @@ syncSlates = do
   d <- getConfigDirectory
   (_, _, _, h) <- createProcess (shell c) {cwd = Just d}
   _ <- waitForProcess h
-  putStr "\x1B[32mDone syncing ☺️\x1B[1m"
+  putStrLn "\x1B[32mDone syncing ☺️\x1B[0m"
