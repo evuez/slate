@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module Lib
   ( initialize
   , execute
@@ -29,7 +31,7 @@ import System.Process
   , waitForProcess
   )
 import Text.Toml (parseTomlDoc)
-import Text.Toml.Types (Node(VString))
+import Text.Toml.Types (Node(VString), Node(VTable))
 
 type Slate = String
 
@@ -171,22 +173,27 @@ getSlatePath s = do
   dir <- getConfigDirectory
   return $ dir ++ s ++ ".md"
 
-getConfigValue :: String -> IO (Maybe String)
-getConfigValue k = do
-  f <- getConfigFile
-  config <- readFile f
-  let Right c = parseTomlDoc "" (fromString config)
-  let vs =
-        case (M.lookup (fromString k) c) of
-          Just (VString s) -> Just (convertString s)
-          _ -> Nothing
-  return vs
+class GetConfig a where
+  getConfigValue :: (String, String) -> IO a
 
-getConfigValueOrFail :: String -> IO String
-getConfigValueOrFail k = do
-  f <- getConfigFile
-  c <- getConfigValue k
-  return $ maybe (error $ "Key `" ++ k ++ "` not found in " ++ f ++ ".") id c
+instance GetConfig (Maybe String) where
+  getConfigValue (s, k) = do
+    f <- getConfigFile
+    config <- readFile f
+    let Right c = parseTomlDoc "" (fromString config)
+    return $
+      case (M.lookup (fromString s) c) of
+        Just (VTable t) ->
+          case (M.lookup (fromString k) t) of
+            Just (VString v) -> Just (convertString v)
+            _ -> Nothing
+        _ -> Nothing
+
+instance GetConfig String where
+  getConfigValue (s, k) = do
+    f <- getConfigFile
+    c <- getConfigValue (s, k)
+    return $ maybe (error $ "Key `" ++ k ++ "` not found in " ++ f ++ ".") id c
 
 displaySlate :: String -> String -> IO ()
 displaySlate s "" = do
@@ -293,7 +300,7 @@ displayStatus s = do
 
 getSyncStatus :: FilePath -> IO String
 getSyncStatus s = do
-  v <- getConfigValue "status"
+  v <- getConfigValue ("callbacks", "status")
   case v of
     (Just c) -> do
       d <- getConfigDirectory
@@ -310,7 +317,7 @@ getSyncStatus s = do
 
 syncSlates :: IO ()
 syncSlates = do
-  c <- getConfigValueOrFail "sync"
+  c <- getConfigValue ("callbacks", "sync")
   d <- getConfigDirectory
   (_, _, _, h) <- createProcess (shell c) {cwd = Just d}
   _ <- waitForProcess h

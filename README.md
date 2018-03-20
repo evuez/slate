@@ -11,8 +11,9 @@ Generates markdown [task lists](https://help.github.com/articles/about-task-list
  - [Install](#install)
  - [Basic usage](#basic-usage)
  - [Configuration](#configuration)
-    - [sync](#sync)
-    - [status](#status)
+    - [Callbacks](#callbacks)
+      - [sync](#sync)
+      - [status](#status)
  - [Autocompletion](#autocompletion)
 
 ## Install
@@ -90,7 +91,18 @@ Lists are stored in `~/.config/slate/` and their default name is the name of you
 
 The following configuration options can be set in `~/.config/slate/config.toml` (you'll have to create this file).
 
-### sync
+### Callbacks
+
+You must define the commands in this section in a `[callbacks]` table:
+
+```
+[callbacks]
+key1 = value1
+key2 = value2
+...
+```
+
+#### sync
 
 You can use `slate sync` to synchronize your slates. There's no default configuration for this command, so for it to work you'll have to add your own sync command, for example:
 
@@ -100,7 +112,7 @@ sync = "git add . && git commit -m 'Update slates'; git pull --rebase origin mas
 
 This would stage & commit every updates in `~/.config/slate/`, update your local copy and push your updates to the `origin` remote.
 
-### status
+#### status
 
 By default, `slate status` only displays the number of notes by status. You can add a command in the `status` key that'll be used to check if the slate is synchronized or not, for example:
 
