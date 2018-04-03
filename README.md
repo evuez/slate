@@ -85,11 +85,13 @@ $ slate display
 00 - My <b>first</b> note.
 </pre>
 
-Lists are stored in `~/.config/slate/` and their default name is the name of your current directory. You can use any other name you want using the `--name` option.
+Lists are stored in `~/.config/slate/` and their default name is the name of your current directory. You can use any other name you want using the `--name` option or by adding a `.slate` file containing the name you want to use.
 
 ## Configuration
 
 The following configuration options can be set in `~/.config/slate/config.toml` (you'll have to create this file).
+
+You can check out [config.example.toml](https://github.com/evuez/slate/blob/master/config.example.toml) for a configuration example.
 
 ### Callbacks
 

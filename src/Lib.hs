@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Lib
   ( initialize
@@ -8,12 +9,14 @@ module Lib
 
 import AnsiStyle (toAnsi)
 import qualified Data.HashMap.Lazy as M (lookup)
+import Data.Maybe (listToMaybe)
 import Data.Semigroup ((<>))
 import Data.String (fromString)
 import Data.String.Conversions (convertString)
 import Options.Applicative
 import System.Directory
   ( createDirectoryIfMissing
+  , doesFileExist
   , getCurrentDirectory
   , getHomeDirectory
   , removeFile
@@ -151,8 +154,16 @@ initialize = getConfigDirectory >>= (\c -> createDirectoryIfMissing True c)
 
 getSlateName :: IO String
 getSlateName = do
-  directory <- getCurrentDirectory
-  return $ takeBaseName directory
+  d <- getCurrentDirectory
+  let headOrFail =
+        \x ->
+          maybe
+            (error "The .slate file in this directory shouldn't be empty.")
+            id
+            (listToMaybe x)
+  doesFileExist (d ++ "/.slate") >>= \case
+    True -> readFile (d ++ "/.slate") >>= (return . headOrFail . lines)
+    False -> return $ takeBaseName d
 
 getConfigDirectory :: IO String
 getConfigDirectory = do

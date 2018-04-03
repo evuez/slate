@@ -1,0 +1,3 @@
+[callbacks]
+sync = "git add . && git commit -m 'Update slates'; git pull --rebase origin master && git push origin master"
+status = "git diff --exit-code $SLATE"
