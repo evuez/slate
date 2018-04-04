@@ -64,6 +64,7 @@ $ slate display --only=todo # or just slate todo
 
 $ slate status
 1 done, 1 todo (2 total).
+▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯▯▯
 
 $ slate add "Fake note"
 $ slate display
