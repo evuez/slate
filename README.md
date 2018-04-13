@@ -28,7 +28,6 @@ $ stack install slate
 
 <pre>
 $ slate --help
-
 slate - a note taking tool.
 
 Usage: slate COMMAND
@@ -43,6 +42,8 @@ Available commands:
                            done notes otherwise.
   todo                     Mark a note as todo when given a note ID, display
                            todo notes otherwise.
+  doing                    Toggle highlighting on a note when given a note ID,
+                           display notes marked as doing otherwise.
   remove                   Remove a note.
   display                  Display a slate.
   rename                   Rename a slate.

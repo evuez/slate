@@ -51,6 +51,8 @@ data Command
          (Maybe NoteId)
   | Todo Slate
          (Maybe NoteId)
+  | Doing Slate
+          (Maybe NoteId)
   | Remove Slate
            NoteId
   | Display Slate
@@ -79,6 +81,9 @@ done = Done <$> name <*> optional (argument auto (metavar "NOTE ID"))
 
 todo :: Parser Command
 todo = Todo <$> name <*> optional (argument auto (metavar "NOTE ID"))
+
+doing :: Parser Command
+doing = Doing <$> name <*> optional (argument auto (metavar "NOTE ID"))
 
 remove :: Parser Command
 remove = Remove <$> name <*> argument auto (metavar "NOTE ID")
@@ -125,6 +130,12 @@ parser =
           todo
           (progDesc
              "Mark a note as todo when given a note ID, display todo notes otherwise.")) <>
+     command
+       "doing"
+       (info
+          doing
+          (progDesc
+             "Toggle highlighting on a note when given a note ID, display notes marked as doing otherwise.")) <>
      command "remove" (info remove (progDesc "Remove a note.")) <>
      command "display" (info display (progDesc "Display a slate.")) <>
      command "rename" (info rename (progDesc "Rename a slate.")) <>
@@ -140,6 +151,8 @@ execute (Done s (Just n)) = getSlatePath s >>= (\x -> markAsDone x n)
 execute (Done s Nothing) = getSlatePath s >>= (\x -> displaySlate x "done")
 execute (Todo s (Just n)) = getSlatePath s >>= (\x -> markAsTodo x n)
 execute (Todo s Nothing) = getSlatePath s >>= (\x -> displaySlate x "todo")
+execute (Doing s (Just n)) = getSlatePath s >>= (\x -> markAsDoing x n)
+execute (Doing s Nothing) = getSlatePath s >>= (\x -> displaySlate x "doing")
 execute (Remove s n) = getSlatePath s >>= (\x -> removeNote x n)
 execute (Display s f) = getSlatePath s >>= (\x -> displaySlate x f)
 execute (Rename sc sn) = renameSlate sc sn
@@ -219,9 +232,15 @@ displaySlate s "todo" = do
   contents <- readFile s
   let notes = zipWith displayNote [0 ..] (lines contents)
   putStr $ unlines $ filter (not . isNoteDone) notes
+displaySlate s "doing" = do
+  contents <- readFile s
+  let notes = zipWith displayNote [0 ..] (lines contents)
+  putStr $ unlines $ filter isNoteDoing notes
 displaySlate _ f = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
 
 displayNote :: Int -> String -> String
+displayNote line (' ':'-':' ':'[':_:']':' ':'>':note) =
+  "\x1B[7m" ++ padInt line 2 ++ " -" ++ (toAnsi note) ++ "\x1B[0m"
 displayNote line (' ':'-':' ':'[':' ':']':note) =
   padInt line 2 ++ " -" ++ (toAnsi note)
 displayNote line (' ':'-':' ':'[':'x':']':note) =
@@ -232,8 +251,13 @@ displayNote line _ =
 
 isNoteDone :: String -> Bool
 isNoteDone (' ':'-':' ':'[':'x':']':_) = True
-isNoteDone ('\x1B':_) = True
+isNoteDone ('\x1B':'[':'9':'m':_) = True
 isNoteDone _ = False
+
+isNoteDoing :: String -> Bool
+isNoteDoing (' ':'-':' ':'[':' ':']':' ':'>':_) = True
+isNoteDoing ('\x1B':'[':'7':'m':_) = True
+isNoteDoing _ = False
 
 padInt :: Int -> Int -> String
 padInt n s = replicate (s - length (show n)) '0' ++ show n
@@ -244,6 +268,7 @@ markAsDone s n = do
   let (x, y:t) = splitAt n (lines contents)
       c =
         case y of
+          ' ':'-':' ':'[':' ':']':' ':'>':note -> " - [x]" ++ note
           ' ':'-':' ':'[':' ':']':note -> " - [x]" ++ note
           note -> note
       tmp = s ++ ".tmp"
@@ -261,6 +286,26 @@ markAsTodo s n = do
       tmp = s ++ ".tmp"
   writeFile tmp (unlines $ x ++ c : t)
   renameFile tmp s
+
+markAsDoing :: FilePath -> Int -> IO ()
+markAsDoing s n = do
+  contents <- readFile s
+  let ls = zipWith (removeDoingMarkForOthers n) [0 ..] (lines contents)
+  let (x, y:t) = splitAt n ls
+      c =
+        case y of
+          ' ':'-':' ':'[':m:']':' ':'>':note -> " - [" ++ [m] ++ "]" ++ note
+          ' ':'-':' ':'[':_:']':note -> " - [ ] >" ++ note
+          note -> note
+      tmp = s ++ ".tmp"
+  writeFile tmp (unlines $ x ++ c : t)
+  renameFile tmp s
+
+removeDoingMarkForOthers :: Int -> Int -> String -> String
+removeDoingMarkForOthers k l p@(' ':'-':' ':'[':m:']':' ':'>':n)
+  | k /= l = " - [" ++ [m] ++ "]" ++ n
+  | otherwise = p
+removeDoingMarkForOthers _ _ n = n
 
 removeNote :: FilePath -> Int -> IO ()
 removeNote s n = do
@@ -305,9 +350,7 @@ displayStatus s = do
     (show t) ++
     " todo (" ++
     (show $ d + t) ++
-    " total).\n" ++
-    "\x1B[32m" ++
-    (replicate pd '▮') ++ "\x1B[0m" ++ (replicate pt '▮') ++ "\n" ++ ss
+    " total).\n" ++ (replicate pd '▮') ++ (replicate pt '▯') ++ "\n" ++ ss
 
 getSyncStatus :: FilePath -> IO String
 getSyncStatus s = do
