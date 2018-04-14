@@ -18,6 +18,8 @@ Generates markdown [task lists](https://help.github.com/articles/about-task-list
 
 ## Install
 
+You can either download a release from [here](https://github.com/evuez/slate/releases) or install it using [stack](https://docs.haskellstack.org/) (requires stack >= 1.6).
+
 ```shell
 $ stack install slate
 ```
