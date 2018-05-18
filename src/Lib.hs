@@ -344,13 +344,14 @@ displayStatus s = do
       dt = fromIntegral t :: Double
       pd = round $ 28 * dd / (dt + dd)
       pt = round $ 28 * dt / (dt + dd)
+      p = round $ dd / (dd + dt) * 100 :: Integer
   putStrLn $
     (show d) ++
     " done, " ++
     (show t) ++
     " todo (" ++
-    (show $ d + t) ++
-    " total).\n" ++ (replicate pd '▮') ++ (replicate pt '▯') ++ "\n" ++ ss
+    (show p) ++
+    "% done).\n" ++ (replicate pd '▮') ++ (replicate pt '▯') ++ "\n" ++ ss
 
 getSyncStatus :: FilePath -> IO String
 getSyncStatus s = do
