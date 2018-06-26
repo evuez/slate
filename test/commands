@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+
+#
+# For now, the tests listed here are order-dependents.
+#
+
+set -e
+
+SLATE_NAME="slate-test"
+SLATE_PATH=~/.config/slate/"$SLATE_NAME.md"
+
+setup () {
+  > $SLATE_PATH
+}
+
+assert_lines_count () {
+  lines_count=$(wc -l < $SLATE_PATH)
+
+  if [ $lines_count -ne $1 ]; then
+    echo "ASSERT LINES COUNT FAILED: $lines_count =/= $1."
+    exit 1
+  fi
+}
+
+assert_contains () {
+  if ! grep -q -F -- "$1" $SLATE_PATH; then
+    echo "ASSERT CONTAINS FAILED: $1 not found."
+    exit 1
+  fi
+}
+
+assert_var_contains () {
+  if ! grep -q -F -- "$2" <<< "$1"; then
+    echo "ASSERT VAR CONTAINS FAILED: $2 not found."
+    exit 1
+  fi
+}
+
+assert_empty_slate () {
+  if [ -f $SLATE_PATH ]; then
+    echo "ASSERT EMPTY SLATE FAILED: $SLATE_NAME is not empty."
+    exit 1
+  fi
+}
+
+
+test_add () {
+  echo "Test: add"
+
+  assert_lines_count 0
+
+  slate add -n $SLATE_NAME "Task #1"
+  slate add -n $SLATE_NAME "Task #2"
+
+  assert_lines_count 2
+  assert_contains "- [ ] Task #1"
+  assert_contains "- [ ] Task #2"
+}
+
+test_done () {
+  echo "Test: done"
+
+  slate done -n $SLATE_NAME 1
+
+  assert_lines_count 2
+  assert_contains "- [ ] Task #1"
+  assert_contains "- [x] Task #2"
+}
+
+test_todo () {
+  echo "Test: todo"
+
+  slate todo -n $SLATE_NAME 1
+
+  assert_lines_count 2
+  assert_contains "- [ ] Task #1"
+  assert_contains "- [ ] Task #2"
+}
+
+test_doing () {
+  echo "Test: doing"
+
+  slate doing -n $SLATE_NAME 0
+
+  assert_lines_count 2
+  assert_contains "- [ ] > Task #1"
+  assert_contains "- [ ] Task #2"
+
+  slate doing -n $SLATE_NAME 0
+
+  assert_lines_count 2
+  assert_contains "- [ ] Task #1"
+  assert_contains "- [ ] Task #2"
+}
+
+test_remove () {
+  echo "Test: remove"
+
+  slate remove -n $SLATE_NAME 1
+
+  assert_lines_count 1
+  assert_contains "- [ ] Task #1"
+}
+
+test_display () {
+  echo "Test: display"
+
+  display=$(slate display -n $SLATE_NAME)
+
+  assert_lines_count 1
+  assert_var_contains "$display" "0 - Task #1"
+}
+
+test_wipe () {
+  echo "Test: wipe"
+
+  assert_lines_count 1
+
+  slate wipe -n $SLATE_NAME
+
+  assert_empty_slate
+}
+
+test_status () {
+  echo "Test: status"
+
+  status=$(slate status -n $SLATE_NAME)
+
+  assert_lines_count 1
+  assert_var_contains "$status" "0 done, 1 todo (0% done)."
+  assert_var_contains "$status" "▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯"
+}
+
+setup
+
+test_add
+test_done
+test_todo
+test_doing
+test_remove
+test_display
+test_status
+test_wipe
