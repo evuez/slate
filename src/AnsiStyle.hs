@@ -4,7 +4,7 @@ module AnsiStyle
 
 data Style
   = Normal
-  | Emphasized
+  | Emphasized Char
   | Code
   deriving (Show)
 
@@ -15,11 +15,11 @@ data Text = Text
   } deriving (Show)
 
 getStyle :: Style -> Char -> (Style, String)
-getStyle Normal '*' = (Emphasized, "\x1B[1m")
-getStyle Normal '_' = (Emphasized, "\x1B[1m")
+getStyle Normal '*' = (Emphasized '*', "\x1B[1m")
+getStyle Normal '_' = (Emphasized '_', "\x1B[1m")
 getStyle Normal '`' = (Code, "\x1B[4m")
-getStyle Emphasized '*' = (Normal, "\x1B[21m")
-getStyle Emphasized '_' = (Normal, "\x1B[21m")
+getStyle (Emphasized '*') '*' = (Normal, "\x1B[22m")
+getStyle (Emphasized '_') '_' = (Normal, "\x1B[22m")
 getStyle Code '`' = (Normal, "\x1B[24m")
 getStyle s c = (s, [c])
 
