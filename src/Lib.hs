@@ -222,32 +222,31 @@ instance GetConfig String where
 displaySlate :: String -> String -> IO ()
 displaySlate s "" = do
   contents <- readFile s
-  let notes = zipWith displayNote [0 ..] (lines contents)
-  putStr $ unlines notes
+  putStr $ unlines $ displayNotes $ lines contents
 displaySlate s "done" = do
   contents <- readFile s
-  let notes = zipWith displayNote [0 ..] (lines contents)
-  putStr $ unlines $ filter isNoteDone notes
+  putStr $ unlines $ filter isNoteDone $ displayNotes $ lines contents
 displaySlate s "todo" = do
   contents <- readFile s
-  let notes = zipWith displayNote [0 ..] (lines contents)
-  putStr $ unlines $ filter (not . isNoteDone) notes
+  putStr $ unlines $ filter (not . isNoteDone) $ displayNotes $ lines contents
 displaySlate s "doing" = do
   contents <- readFile s
-  let notes = zipWith displayNote [0 ..] (lines contents)
-  putStr $ unlines $ filter isNoteDoing notes
+  putStr $ unlines $ filter isNoteDoing $ displayNotes $ lines contents
 displaySlate _ f = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
 
-displayNote :: Int -> String -> String
-displayNote line (' ':'-':' ':'[':_:']':' ':'>':note) =
-  "\x1B[7m" ++ padInt line 2 ++ " -" ++ (toAnsi note) ++ "\x1B[0m"
-displayNote line (' ':'-':' ':'[':' ':']':note) =
-  padInt line 2 ++ " -" ++ (toAnsi note)
-displayNote line (' ':'-':' ':'[':'x':']':note) =
-  "\x1B[9m" ++ padInt line 2 ++ " -" ++ (toAnsi note) ++ "\x1B[0m"
-displayNote line _ =
+displayNotes :: [String] -> [String]
+displayNotes notes = zipWith (displayNote $ length notes) [0 ..] notes
+
+displayNote :: Int -> Int -> String -> String
+displayNote total line (' ':'-':' ':'[':_:']':' ':'>':note) =
+  "\x1B[7m" ++ alignRight total line ++ " -" ++ (toAnsi note) ++ "\x1B[0m"
+displayNote total line (' ':'-':' ':'[':' ':']':note) =
+  alignRight total line ++ " -" ++ (toAnsi note)
+displayNote total line (' ':'-':' ':'[':'x':']':note) =
+  "\x1B[9m" ++ alignRight total line ++ " -" ++ (toAnsi note) ++ "\x1B[0m"
+displayNote total line _ =
   "\x1B[31m" ++
-  padInt line 2 ++ " - Parsing error: line is malformed" ++ "\x1B[0m"
+  alignRight total line ++ " - Parsing error: line is malformed" ++ "\x1B[0m"
 
 isNoteDone :: String -> Bool
 isNoteDone (' ':'-':' ':'[':'x':']':_) = True
@@ -259,8 +258,8 @@ isNoteDoing (' ':'-':' ':'[':' ':']':' ':'>':_) = True
 isNoteDoing ('\x1B':'[':'7':'m':_) = True
 isNoteDoing _ = False
 
-padInt :: Int -> Int -> String
-padInt n s = replicate (s - length (show n)) '0' ++ show n
+alignRight :: Int -> Int -> String
+alignRight m n = replicate (length (show m) - length (show n)) ' ' ++ show n
 
 markAsDone :: FilePath -> Int -> IO ()
 markAsDone s n = do
