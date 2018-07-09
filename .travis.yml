@@ -17,21 +17,11 @@ before_install:
 
 install:
 - stack --no-terminal --install-ghc test --only-dependencies
+- stack --no-terminal install
 
 before_script:
   - mkdir -p ~/.config/slate/
+  - touch ~/.config/slate/config.toml
 
 script:
   - ./test/commands
-
-before_deploy:
-- stack sdist
-
-deploy:
-  provider: releases
-  api_key:
-    secure: HReyievuMy0EmS0eSU/DxQPX2L2RwR6e2fEpKl1j2ugWG4bfi3PSEmlaIJR6QlptlJFTK8tiF0QzXqTdTm/ojElyFYT1xjghRygh28qj7tbiD6+wJRZL7QASOaT00dPwECYq/Yqev7LS15S1ezUeDKQfCI6diz2yCN0V02LHIZZf4ciCKuamN09WWGFMnofTHgIGL3Ak3/vQ6ETbrDeFk1gvZuX8nzO0Sy/4FNsxDebDSK1WR21T7kleGJ5tpt8zPoC4cinYm99qS9KADBFdnQmwGuMoCpTte4hiQZtu33w2r3OR+Gw7t0G6iyl3Qlvxixrptjpv/rreKAV3L5MZq9dkFQeAlNMc8t0WfT8OsL1xkwjOQ89fJZSJyJ3XnkjTxPFnzuin0z7NmRN9Sqo1Ml1iaTPViey+R/OdkcQHTso4crraCTVaTicGwEUJESUTrS2R797effAuFQm92OUP9mB5e9cT1FlS3fdBVbYnMzBKb3mditRTfAl45KYJZ+E5BlaUD0OJd7lv/tujaF9aL/yQP9OR8Rtviu790zMuEc/ZCI2h2muq1KFO/UCC21htYmqWnL2D7yC2B8FLLV5lOkgRvbz7YjPcdNDzDsgEzdwXYH6N3HS2Xv+pDJwIp7x6iMKlE8SSt2ZTrVsksZ/b9CdpCMBYExHnMa8pbbf2kSk=
-  file: ".stack-work/dist/x86_64-linux/Cabal-2.0.1.0/slate-${TRAVIS_TAG}.0.tar.gz"
-  skip_cleanup: true
-  on:
-    tags: true

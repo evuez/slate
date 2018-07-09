@@ -1,29 +1,16 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-
 module Lib
   ( initialize
   , execute
   , parser
   ) where
 
-import AnsiStyle (toAnsi)
-import qualified Data.HashMap.Lazy as M (lookup)
-import Data.Maybe (listToMaybe)
-import Data.Semigroup ((<>))
-import Data.String (fromString)
-import Data.String.Conversions (convertString)
-import Options.Applicative
-import System.Directory
-  ( createDirectoryIfMissing
-  , doesFileExist
-  , getCurrentDirectory
-  , getHomeDirectory
-  , removeFile
-  , renameFile
-  )
+import Ansi (makeCrossed, makeGreen, makeInverse, makeRed, progress)
+import Command (Command(..), parser)
+import Config (configDirectory, getConfigValue, getSlatePath)
+import qualified Filter as F (doing, done, todo)
+import Style (preen)
+import System.Directory (createDirectoryIfMissing, removeFile, renameFile)
 import System.Exit (ExitCode(ExitFailure, ExitSuccess))
-import System.FilePath.Posix (takeBaseName)
 import System.Process
   ( StdStream(NoStream)
   , createProcess
@@ -33,117 +20,7 @@ import System.Process
   , std_out
   , waitForProcess
   )
-import Text.Toml (parseTomlDoc)
-import Text.Toml.Types (Node(VString), Node(VTable))
 
-type Slate = String
-
-type Note = String
-
-type NoteId = Int
-
-type Filter = String
-
-data Command
-  = Add Slate
-        Note
-  | Done Slate
-         (Maybe NoteId)
-  | Todo Slate
-         (Maybe NoteId)
-  | Doing Slate
-          (Maybe NoteId)
-  | Remove Slate
-           NoteId
-  | Display Slate
-            Filter
-  | Rename Slate
-           Slate
-  | Wipe Slate
-         Filter
-  | Status Slate
-  | Sync
-  deriving (Eq, Show)
-
--- Parsers
-name :: Parser String
-name =
-  option
-    str
-    (long "name" <> short 'n' <> metavar "SLATE" <> help "Name of the slate." <>
-     value "")
-
-add :: Parser Command
-add = Add <$> name <*> argument str (metavar "NOTE")
-
-done :: Parser Command
-done = Done <$> name <*> optional (argument auto (metavar "NOTE ID"))
-
-todo :: Parser Command
-todo = Todo <$> name <*> optional (argument auto (metavar "NOTE ID"))
-
-doing :: Parser Command
-doing = Doing <$> name <*> optional (argument auto (metavar "NOTE ID"))
-
-remove :: Parser Command
-remove = Remove <$> name <*> argument auto (metavar "NOTE ID")
-
-display :: Parser Command
-display =
-  Display <$> name <*>
-  option
-    str
-    (long "only" <> short 'o' <> help "Display only done / todo notes." <>
-     value "")
-
-rename :: Parser Command
-rename =
-  Rename <$> argument str (metavar "CURRENT" <> help "Current name.") <*>
-  argument str (metavar "NEW" <> help "New name.")
-
-wipe :: Parser Command
-wipe =
-  Wipe <$> name <*>
-  option
-    str
-    (long "only" <> short 'o' <> help "Wipe only done / todo notes." <> value "")
-
-status :: Parser Command
-status = Status <$> name
-
-sync :: Command
-sync = Sync
-
-parser :: Parser Command
-parser =
-  subparser
-    (command "add" (info add (progDesc "Add a note.")) <>
-     command
-       "done"
-       (info
-          done
-          (progDesc
-             "Mark a note as done when given a note ID, display done notes otherwise.")) <>
-     command
-       "todo"
-       (info
-          todo
-          (progDesc
-             "Mark a note as todo when given a note ID, display todo notes otherwise.")) <>
-     command
-       "doing"
-       (info
-          doing
-          (progDesc
-             "Toggle highlighting on a note when given a note ID, display notes marked as doing otherwise.")) <>
-     command "remove" (info remove (progDesc "Remove a note.")) <>
-     command "display" (info display (progDesc "Display a slate.")) <>
-     command "rename" (info rename (progDesc "Rename a slate.")) <>
-     command "wipe" (info wipe (progDesc "Wipe a slate.")) <>
-     command "status" (info status (progDesc "Display the status of a slate.")) <>
-     command "sync" (info (pure sync) (progDesc "Sync every slate.")))
-
--- Commands
 execute :: Command -> IO ()
 execute (Add s n) =
   getSlatePath s >>= (\x -> appendFile x (" - [ ] " ++ n ++ "\n"))
@@ -161,77 +38,22 @@ execute (Wipe s f) = getSlatePath s >>= (\x -> wipeSlate x f)
 execute (Status s) = getSlatePath s >>= (\x -> displayStatus x)
 execute (Sync) = syncSlates
 
--- Helpers
 initialize :: IO ()
-initialize = getConfigDirectory >>= (\c -> createDirectoryIfMissing True c)
-
-getSlateName :: IO String
-getSlateName = do
-  d <- getCurrentDirectory
-  let headOrFail =
-        \x ->
-          maybe
-            (error "The .slate file in this directory shouldn't be empty.")
-            id
-            (listToMaybe x)
-  doesFileExist (d ++ "/.slate") >>= \case
-    True -> readFile (d ++ "/.slate") >>= (return . headOrFail . lines)
-    False -> return $ takeBaseName d
-
-getConfigDirectory :: IO String
-getConfigDirectory = do
-  home <- getHomeDirectory
-  return $ home ++ "/.config/slate/"
-
-getConfigFile :: IO String
-getConfigFile = do
-  dir <- getConfigDirectory
-  return $ dir ++ "config.toml"
-
-getSlatePath :: String -> IO FilePath
-getSlatePath "" = do
-  s <- getSlateName
-  dir <- getConfigDirectory
-  return $ dir ++ s ++ ".md"
-getSlatePath s = do
-  dir <- getConfigDirectory
-  return $ dir ++ s ++ ".md"
-
-class GetConfig a where
-  getConfigValue :: (String, String) -> IO a
-
-instance GetConfig (Maybe String) where
-  getConfigValue (s, k) = do
-    f <- getConfigFile
-    config <- readFile f
-    let Right c = parseTomlDoc "" (fromString config)
-    return $
-      case (M.lookup (fromString s) c) of
-        Just (VTable t) ->
-          case (M.lookup (fromString k) t) of
-            Just (VString v) -> Just (convertString v)
-            _ -> Nothing
-        _ -> Nothing
-
-instance GetConfig String where
-  getConfigValue (s, k) = do
-    f <- getConfigFile
-    c <- getConfigValue (s, k)
-    return $ maybe (error $ "Key `" ++ k ++ "` not found in " ++ f ++ ".") id c
+initialize = configDirectory >>= (\c -> createDirectoryIfMissing True c)
 
 displaySlate :: String -> String -> IO ()
 displaySlate s "" = do
   contents <- readFile s
-  putStr $ unlines $ displayNotes $ lines contents
+  putStr $ unlines $ displayNotes (lines contents)
 displaySlate s "done" = do
   contents <- readFile s
-  putStr $ unlines $ filter isNoteDone $ displayNotes $ lines contents
+  putStr $ unlines $ filter F.done $ displayNotes (lines contents)
 displaySlate s "todo" = do
   contents <- readFile s
-  putStr $ unlines $ filter (not . isNoteDone) $ displayNotes $ lines contents
+  putStr $ unlines $ filter F.todo $ displayNotes (lines contents)
 displaySlate s "doing" = do
   contents <- readFile s
-  putStr $ unlines $ filter isNoteDoing $ displayNotes $ lines contents
+  putStr $ unlines $ filter F.doing $ displayNotes (lines contents)
 displaySlate _ f = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
 
 displayNotes :: [String] -> [String]
@@ -239,27 +61,16 @@ displayNotes notes = zipWith (displayNote $ length notes) [0 ..] notes
 
 displayNote :: Int -> Int -> String -> String
 displayNote total line (' ':'-':' ':'[':_:']':' ':'>':note) =
-  "\x1B[7m" ++ alignRight total line ++ " -" ++ (toAnsi note) ++ "\x1B[0m"
+  makeInverse $ alignRight total line ++ " -" ++ preen note
 displayNote total line (' ':'-':' ':'[':' ':']':note) =
-  alignRight total line ++ " -" ++ (toAnsi note)
+  alignRight total line ++ " -" ++ preen note
 displayNote total line (' ':'-':' ':'[':'x':']':note) =
-  "\x1B[9m" ++ alignRight total line ++ " -" ++ (toAnsi note) ++ "\x1B[0m"
+  makeCrossed $ alignRight total line ++ " -" ++ preen note
 displayNote total line _ =
-  "\x1B[31m" ++
-  alignRight total line ++ " - Parsing error: line is malformed" ++ "\x1B[0m"
-
-isNoteDone :: String -> Bool
-isNoteDone (' ':'-':' ':'[':'x':']':_) = True
-isNoteDone ('\x1B':'[':'9':'m':_) = True
-isNoteDone _ = False
-
-isNoteDoing :: String -> Bool
-isNoteDoing (' ':'-':' ':'[':' ':']':' ':'>':_) = True
-isNoteDoing ('\x1B':'[':'7':'m':_) = True
-isNoteDoing _ = False
+  makeRed $ alignRight total line ++ " - Parsing error: line is malformed"
 
 alignRight :: Int -> Int -> String
-alignRight m n = replicate (length (show m) - length (show n)) ' ' ++ show n
+alignRight x n = replicate (length (show x) - length (show n)) ' ' ++ show n
 
 markAsDone :: FilePath -> Int -> IO ()
 markAsDone s n = do
@@ -324,12 +135,12 @@ wipeSlate :: FilePath -> String -> IO ()
 wipeSlate s "done" = do
   contents <- readFile s
   let tmp = s ++ ".tmp"
-  writeFile tmp $ unlines $ filter (not . isNoteDone) (lines contents)
+  writeFile tmp $ unlines $ filter F.todo (lines contents)
   renameFile tmp s
 wipeSlate s "todo" = do
   contents <- readFile s
   let tmp = s ++ ".tmp"
-  writeFile tmp $ unlines $ filter isNoteDone (lines contents)
+  writeFile tmp $ unlines $ filter F.done (lines contents)
   renameFile tmp s
 wipeSlate _ f = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
 
@@ -337,27 +148,26 @@ displayStatus :: FilePath -> IO ()
 displayStatus s = do
   ss <- getSyncStatus s
   contents <- readFile s
-  let d = length $ filter isNoteDone (lines contents)
-      t = length $ filter (not . isNoteDone) (lines contents)
-      dd = fromIntegral d :: Double
-      dt = fromIntegral t :: Double
-      pd = round $ 28 * dd / (dt + dd)
-      pt = round $ 28 * dt / (dt + dd)
-      p = round $ dd / (dd + dt) * 100 :: Integer
-  putStrLn $
-    (show d) ++
-    " done, " ++
-    (show t) ++
-    " todo (" ++
-    (show p) ++
-    "% done).\n" ++ (replicate pd '▮') ++ (replicate pt '▯') ++ "\n" ++ ss
+  let done = fromIntegral $ length $ filter F.done (lines contents) :: Double
+      todo = fromIntegral $ length $ filter F.todo (lines contents) :: Double
+      percent = done / (done + todo) * 100
+      stats =
+        mconcat
+          [ show (round done :: Integer)
+          , " done, "
+          , show (round todo :: Integer)
+          , " todo ("
+          , show (round percent :: Integer)
+          , "% done)."
+          ]
+  putStrLn $ mconcat [stats, "\n", progress percent (length stats), "\n", ss]
 
 getSyncStatus :: FilePath -> IO String
 getSyncStatus s = do
   v <- getConfigValue ("callbacks", "status")
   case v of
     (Just c) -> do
-      d <- getConfigDirectory
+      d <- configDirectory
       (_, _, _, h) <-
         createProcess
           (shell c)
@@ -365,14 +175,14 @@ getSyncStatus s = do
       e <- waitForProcess h
       return $
         case e of
-          ExitSuccess -> "\x1B[32mSynced ☺️\x1B[0m"
-          (ExitFailure _) -> "\x1B[31mOut of sync 😕\x1B[0m"
+          ExitSuccess -> makeGreen "Synced ☺️"
+          (ExitFailure _) -> makeRed "Out of sync 😕"
     Nothing -> return ""
 
 syncSlates :: IO ()
 syncSlates = do
   c <- getConfigValue ("callbacks", "sync")
-  d <- getConfigDirectory
+  d <- configDirectory
   (_, _, _, h) <- createProcess (shell c) {cwd = Just d}
   _ <- waitForProcess h
-  putStrLn "\x1B[32mDone syncing ☺️\x1B[0m"
+  putStrLn $ makeGreen "Done syncing ☺️"

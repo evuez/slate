@@ -128,7 +128,7 @@ test_status () {
 
   assert_lines_count 1
   assert_var_contains "$status" "0 done, 1 todo (0% done)."
-  assert_var_contains "$status" "▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯"
+  assert_var_contains "$status" "                         "
 }
 
 setup
