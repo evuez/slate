@@ -7,9 +7,8 @@ module Lib
 import Ansi
   ( Palette(primary, secondary, success, ternary, warning)
   , makeCrossed
-  , makeGreen
   , makeInverse
-  , makeRed
+  , paint
   , palette
   , progress
   , reset
@@ -70,17 +69,15 @@ displayNotes notes = zipWith (displayNote $ length notes) [0 ..] notes
 
 displayNote :: Int -> Int -> String -> String
 displayNote total line (' ':'-':' ':'[':_:']':' ':'>':note) =
-  makeInverse $
-  (ternary palette) ++ alignRight total line ++ reset ++ " -" ++ preen note
+  makeInverse $ (paint ternary $ alignRight total line) ++ " -" ++ preen note ++ reset
 displayNote total line (' ':'-':' ':'[':' ':']':note) =
-  (ternary palette) ++ alignRight total line ++ reset ++ " -" ++ preen note
+  (paint ternary $ alignRight total line) ++ " -" ++ preen note ++ reset
 displayNote total line (' ':'-':' ':'[':'x':']':note) =
-  makeCrossed $
-  (ternary palette) ++ alignRight total line ++ reset ++ " -" ++ preen note
+  makeCrossed $ (paint ternary $ alignRight total line) ++ " -" ++ preen note ++ reset
 displayNote total line _ =
-  makeRed $
-  (ternary palette) ++
-  alignRight total line ++ reset ++ " - Parsing error: line is malformed"
+  (paint warning) $
+  (paint ternary $ alignRight total line) ++
+  " - Parsing error: line is malformed"
 
 alignRight :: Int -> Int -> String
 alignRight x n = replicate (length (show x) - length (show n)) ' ' ++ show n
@@ -207,4 +204,4 @@ syncSlates = do
   d <- configDirectory
   (_, _, _, h) <- createProcess (shell c) {cwd = Just d}
   _ <- waitForProcess h
-  putStrLn $ makeGreen "Done syncing ☺️"
+  putStrLn $ paint success "Done syncing ✔"

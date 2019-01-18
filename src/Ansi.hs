@@ -76,11 +76,5 @@ makeResetEmphasis s = resetEmphasis ++ s ++ reset
 makeResetUnderline :: String -> String
 makeResetUnderline s = resetUnderline ++ s ++ reset
 
-makeRed :: String -> String
-makeRed s = red ++ s ++ reset
-
-makeGreen :: String -> String
-makeGreen s = green ++ s ++ reset
-
-makeGrey :: String -> String
-makeGrey s = grey ++ s ++ reset
+paint :: (Palette -> String) -> String -> String
+paint f s = (f palette) ++ s ++ reset
