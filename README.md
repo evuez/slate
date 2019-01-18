@@ -2,7 +2,7 @@
 
 A simple tool to take notes from your terminal (and sync them between your devices).
 
-![`slate status`](https://gist.github.com/evuez/ff11275ea00404472b57520cf92bfed2/raw/423813dd1ce5b6714c5a9d365b9cedb56df66978/slate-status.png)
+![`slate status`](https://user-images.githubusercontent.com/634827/51380042-13144400-1b11-11e9-846f-114ee282c29c.png)
 
 Generates markdown [task lists](https://help.github.com/articles/about-task-lists/).
 
@@ -54,39 +54,40 @@ Available commands:
 $ slate add "My *first* note."
 $ slate add "New note!"
 $ slate display
-00 - My <b>first</b> note.
-01 - New note!
+0 - My <b>first</b> note.
+1 - New note!
 
 $ slate done 0
 $ slate display
-<s>00 - My <b>first</b> note.</s>
-01 - New note!
+<s>0 - My <b>first</b> note.</s>
+1 - New note!
 
 $ slate display --only=todo # or just slate todo
-01 - New note!
+1 - New note!
 
 $ slate status
 1 done, 1 todo (2 total).
-▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯▯▯
+50% · 1 done · 1 todo — sync ✔
+▮▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯▯▯▯▯▯▯▯▯▯
 
 $ slate add "Fake note"
 $ slate display
-<s>00 - My <b>first</b> note.</s>
-01 - New note!
-02 - Fake note
+<s>0 - My <b>first</b> note.</s>
+1 - New note!
+2 - Fake note
 
 $ slate remove 2
 $ slate display
-<s>00 - My <b>first</b> note.</s>
-01 - New note!
+<s>0 - My <b>first</b> note.</s>
+1 - New note!
 
 $ slate wipe --only=todo
 $ slate display
-<s>00 - My <b>first</b> note.</s>
+<s>0 - My <b>first</b> note.</s>
 
 $ slate todo 0
 $ slate display
-00 - My <b>first</b> note.
+0 - My <b>first</b> note.
 </pre>
 
 Lists are stored in `~/.config/slate/` and their default name is the name of your current directory. You can use any other name you want using the `--name` option or by adding a `.slate` file containing the name you want to use.

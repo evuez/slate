@@ -4,7 +4,16 @@ module Lib
   , parser
   ) where
 
-import Ansi (makeCrossed, makeGreen, makeInverse, makeRed, progress)
+import Ansi
+  ( Palette(primary, secondary, success, ternary, warning)
+  , makeCrossed
+  , makeGreen
+  , makeInverse
+  , makeRed
+  , palette
+  , progress
+  , reset
+  )
 import Command (Command(..), parser)
 import Config (configDirectory, getConfigValue, getSlatePath)
 import qualified Filter as F (doing, done, todo)
@@ -61,13 +70,17 @@ displayNotes notes = zipWith (displayNote $ length notes) [0 ..] notes
 
 displayNote :: Int -> Int -> String -> String
 displayNote total line (' ':'-':' ':'[':_:']':' ':'>':note) =
-  makeInverse $ alignRight total line ++ " -" ++ preen note
+  makeInverse $
+  (ternary palette) ++ alignRight total line ++ reset ++ " -" ++ preen note
 displayNote total line (' ':'-':' ':'[':' ':']':note) =
-  alignRight total line ++ " -" ++ preen note
+  (ternary palette) ++ alignRight total line ++ reset ++ " -" ++ preen note
 displayNote total line (' ':'-':' ':'[':'x':']':note) =
-  makeCrossed $ alignRight total line ++ " -" ++ preen note
+  makeCrossed $
+  (ternary palette) ++ alignRight total line ++ reset ++ " -" ++ preen note
 displayNote total line _ =
-  makeRed $ alignRight total line ++ " - Parsing error: line is malformed"
+  makeRed $
+  (ternary palette) ++
+  alignRight total line ++ reset ++ " - Parsing error: line is malformed"
 
 alignRight :: Int -> Int -> String
 alignRight x n = replicate (length (show x) - length (show n)) ' ' ++ show n
@@ -146,23 +159,32 @@ wipeSlate _ f = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
 
 displayStatus :: FilePath -> IO ()
 displayStatus s = do
-  ss <- getSyncStatus s
+  (syncColor, syncString) <- getSyncStatus s
   contents <- readFile s
   let done = fromIntegral $ length $ filter F.done (lines contents) :: Double
       todo = fromIntegral $ length $ filter F.todo (lines contents) :: Double
       percent = done / (done + todo) * 100
       stats =
-        mconcat
-          [ show (round done :: Integer)
-          , " done, "
-          , show (round todo :: Integer)
-          , " todo ("
-          , show (round percent :: Integer)
-          , "% done)."
-          ]
-  putStrLn $ mconcat [stats, "\n", progress percent (length stats), "\n", ss]
+        [ (ternary palette)
+        , show (round percent :: Integer)
+        , "% · "
+        , reset
+        , (primary palette)
+        , show (round done :: Integer)
+        , reset
+        , " done · "
+        , (secondary palette)
+        , show (round todo :: Integer)
+        , reset
+        , " todo — "
+        , syncColor
+        , syncString
+        , reset
+        ]
+      statsLength = sum [length (x : xs) | x:xs <- stats, x /= '\ESC']
+  putStrLn $ mconcat [mconcat stats, "\n", progress percent statsLength]
 
-getSyncStatus :: FilePath -> IO String
+getSyncStatus :: FilePath -> IO (String, String)
 getSyncStatus s = do
   v <- getConfigValue ("callbacks", "status")
   case v of
@@ -175,9 +197,9 @@ getSyncStatus s = do
       e <- waitForProcess h
       return $
         case e of
-          ExitSuccess -> makeGreen "Synced ☺️"
-          (ExitFailure _) -> makeRed "Out of sync 😕"
-    Nothing -> return ""
+          ExitSuccess -> ((success palette), "sync ✔")
+          (ExitFailure _) -> ((warning palette), "sync ✘")
+    Nothing -> return ("", "")
 
 syncSlates :: IO ()
 syncSlates = do

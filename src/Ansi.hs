@@ -3,7 +3,9 @@ module Ansi where
 progress :: Double -> Int -> String
 progress percent size =
   makeInverse
-    ((replicate sizeCompleted ' ') ++ makeGrey (replicate sizeRemaining ' '))
+    ((primary palette) ++
+     (replicate sizeCompleted ' ') ++
+     (secondary palette) ++ (replicate sizeRemaining ' '))
   where
     size' = fromIntegral size :: Double
     sizeCompleted = round $ size' * percent / 100
@@ -38,6 +40,23 @@ green = "\x1B[32m"
 
 grey :: String
 grey = "\x1B[2;37m"
+
+data Palette = Palette
+  { primary :: String
+  , secondary :: String
+  , ternary :: String
+  , success :: String
+  , warning :: String
+  } deriving (Show)
+
+palette :: Palette
+palette =
+  Palette
+    "\x1B[38;5;97m"
+    "\x1B[38;5;74m"
+    "\x1B[38;5;178m"
+    "\x1B[38;5;72m"
+    "\x1B[38;5;167m"
 
 makeBold :: String -> String
 makeBold s = bold ++ s ++ reset

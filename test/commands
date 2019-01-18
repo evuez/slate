@@ -30,7 +30,7 @@ assert_contains () {
 }
 
 assert_var_contains () {
-  if ! grep -q -F -- "$2" <<< "$1"; then
+  if ! grep -q -F -- "$2" <<< $(sed -r 's/\x1b\[[0-9;]*m?//g' <<< "$1"); then
     echo "ASSERT VAR CONTAINS FAILED: $2 not found."
     exit 1
   fi
@@ -127,7 +127,7 @@ test_status () {
   status=$(slate status -n $SLATE_NAME)
 
   assert_lines_count 1
-  assert_var_contains "$status" "0 done, 1 todo (0% done)."
+  assert_var_contains "$status" "0% · 0 done · 1 todo — "
   assert_var_contains "$status" "                         "
 }
 
