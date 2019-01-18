@@ -68,7 +68,7 @@ displayNotes :: [String] -> [String]
 displayNotes notes = zipWith (displayNote $ length notes) [0 ..] notes
 
 displayNote :: Int -> Int -> String -> String
-displayNote total line (' ':'-':' ':'[':_:']':' ':'>':note) =
+displayNote total line (' ':'-':' ':'[':' ':']':' ':'>':note) =
   makeInverse $ (paint ternary $ alignRight total line) ++ " -" ++ preen note ++ reset
 displayNote total line (' ':'-':' ':'[':' ':']':note) =
   (paint ternary $ alignRight total line) ++ " -" ++ preen note ++ reset
