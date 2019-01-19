@@ -15,6 +15,7 @@ import Ansi
   )
 import Command (Command(..), parser)
 import Config (configDirectory, getConfigValue, getSlatePath)
+import Data.Maybe (fromMaybe, listToMaybe)
 import qualified Filter as F (doing, done, todo)
 import Style (preen)
 import System.Directory (createDirectoryIfMissing, removeFile, renameFile)
@@ -71,11 +72,13 @@ displayNotes notes = zipWith (displayNote $ length notes) [0 ..] notes
 
 displayNote :: Int -> Int -> String -> String
 displayNote total line (' ':'-':' ':'[':' ':']':' ':'>':note) =
-  makeInverse $ (paint ternary $ alignRight total line) ++ " -" ++ preen note ++ reset
+  makeInverse $
+  (paint ternary $ alignRight total line) ++ " -" ++ preen note ++ reset
 displayNote total line (' ':'-':' ':'[':' ':']':note) =
   (paint ternary $ alignRight total line) ++ " -" ++ preen note ++ reset
 displayNote total line (' ':'-':' ':'[':'x':']':note) =
-  makeCrossed $ (paint ternary $ alignRight total line) ++ " -" ++ preen note ++ reset
+  makeCrossed $
+  (paint ternary $ alignRight total line) ++ " -" ++ preen note ++ reset
 displayNote total line _ =
   (paint warning) $
   (paint ternary $ alignRight total line) ++
@@ -131,9 +134,9 @@ removeDoingMarkForOthers _ _ n = n
 
 editSlate :: FilePath -> IO ()
 editSlate s = do
-   h <- spawnProcess "vim" [s]
-   _ <- waitForProcess h
-   return ()
+  h <- spawnProcess "vim" [s]
+  _ <- waitForProcess h
+  return ()
 
 removeNote :: FilePath -> Int -> IO ()
 removeNote s n = do
@@ -168,6 +171,10 @@ displayStatus s = do
   contents <- readFile s
   let done = fromIntegral $ length $ filter F.done (lines contents) :: Double
       todo = fromIntegral $ length $ filter F.todo (lines contents) :: Double
+      doing =
+        fromMaybe "" $
+        (\x -> Just $ "\n" ++ x) =<<
+        (listToMaybe $ filter F.doing $ displayNotes (lines contents))
       percent = done / (done + todo) * 100
       stats =
         [ (ternary palette)
@@ -187,7 +194,7 @@ displayStatus s = do
         , reset
         ]
       statsLength = sum [length (x : xs) | x:xs <- stats, x /= '\ESC']
-  putStrLn $ mconcat [mconcat stats, "\n", progress percent statsLength]
+  putStrLn $ mconcat [mconcat stats, "\n", progress percent statsLength, doing]
 
 getSyncStatus :: FilePath -> IO (String, String)
 getSyncStatus s = do
