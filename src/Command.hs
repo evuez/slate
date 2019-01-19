@@ -23,6 +23,7 @@ data Command
          (Maybe NoteId)
   | Doing Slate
           (Maybe NoteId)
+  | Edit Slate
   | Remove Slate
            NoteId
   | Display Slate
@@ -53,6 +54,9 @@ todo = Todo <$> name <*> optional (argument auto (metavar "NOTE ID"))
 
 doing :: Parser Command
 doing = Doing <$> name <*> optional (argument auto (metavar "NOTE ID"))
+
+edit :: Parser Command
+edit = Edit <$> name
 
 remove :: Parser Command
 remove = Remove <$> name <*> argument auto (metavar "NOTE ID")
@@ -105,6 +109,7 @@ parser =
           doing
           (progDesc
              "Toggle highlighting on a note when given a note ID, display notes marked as doing otherwise.")) <>
+     command "edit" (info edit (progDesc "Open the slate in the default editor.")) <>
      command "remove" (info remove (progDesc "Remove a note.")) <>
      command "display" (info display (progDesc "Display a slate.")) <>
      command "rename" (info rename (progDesc "Rename a slate.")) <>

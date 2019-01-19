@@ -25,6 +25,7 @@ import System.Process
   , cwd
   , env
   , shell
+  , spawnProcess
   , std_out
   , waitForProcess
   )
@@ -38,6 +39,7 @@ execute (Todo s (Just n)) = getSlatePath s >>= (\x -> markAsTodo x n)
 execute (Todo s Nothing) = getSlatePath s >>= (\x -> displaySlate x "todo")
 execute (Doing s (Just n)) = getSlatePath s >>= (\x -> markAsDoing x n)
 execute (Doing s Nothing) = getSlatePath s >>= (\x -> displaySlate x "doing")
+execute (Edit s) = getSlatePath s >>= editSlate
 execute (Remove s n) = getSlatePath s >>= (\x -> removeNote x n)
 execute (Display s f) = getSlatePath s >>= (\x -> displaySlate x f)
 execute (Rename sc sn) = renameSlate sc sn
@@ -126,6 +128,12 @@ removeDoingMarkForOthers k l p@(' ':'-':' ':'[':m:']':' ':'>':n)
   | k /= l = " - [" ++ [m] ++ "]" ++ n
   | otherwise = p
 removeDoingMarkForOthers _ _ n = n
+
+editSlate :: FilePath -> IO ()
+editSlate s = do
+   h <- spawnProcess "vim" [s]
+   _ <- waitForProcess h
+   return ()
 
 removeNote :: FilePath -> Int -> IO ()
 removeNote s n = do
