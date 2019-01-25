@@ -14,11 +14,14 @@ type NoteId = Int
 
 type Filter = String
 
+type Comment = String
+
 data Command
   = Add Slate
         Note
   | Done Slate
          (Maybe NoteId)
+         (Maybe Comment)
   | Todo Slate
          (Maybe NoteId)
   | Doing Slate
@@ -47,7 +50,13 @@ add :: Parser Command
 add = Add <$> name <*> argument str (metavar "NOTE")
 
 done :: Parser Command
-done = Done <$> name <*> optional (argument auto (metavar "NOTE ID"))
+done =
+  Done <$> name <*> optional (argument auto (metavar "NOTE ID")) <*>
+  optional
+    (option
+       str
+       (long "comment" <> short 'c' <> metavar "COMMENT" <>
+        help "Additional comment."))
 
 todo :: Parser Command
 todo = Todo <$> name <*> optional (argument auto (metavar "NOTE ID"))
@@ -109,7 +118,9 @@ parser =
           doing
           (progDesc
              "Toggle highlighting on a note when given a note ID, display notes marked as doing otherwise.")) <>
-     command "edit" (info edit (progDesc "Open the slate in the default editor.")) <>
+     command
+       "edit"
+       (info edit (progDesc "Open the slate in the default editor.")) <>
      command "remove" (info remove (progDesc "Remove a note.")) <>
      command "display" (info display (progDesc "Display a slate.")) <>
      command "rename" (info rename (progDesc "Rename a slate.")) <>

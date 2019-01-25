@@ -34,8 +34,9 @@ import System.Process
 execute :: Command -> IO ()
 execute (Add s n) =
   getSlatePath s >>= (\x -> appendFile x (" - [ ] " ++ n ++ "\n"))
-execute (Done s (Just n)) = getSlatePath s >>= (\x -> markAsDone x n)
-execute (Done s Nothing) = getSlatePath s >>= (\x -> displaySlate x "done")
+execute (Done s (Just n) comment) =
+  getSlatePath s >>= (\x -> markAsDone x n comment)
+execute (Done s Nothing _) = getSlatePath s >>= (\x -> displaySlate x "done")
 execute (Todo s (Just n)) = getSlatePath s >>= (\x -> markAsTodo x n)
 execute (Todo s Nothing) = getSlatePath s >>= (\x -> displaySlate x "todo")
 execute (Doing s (Just n)) = getSlatePath s >>= (\x -> markAsDoing x n)
@@ -87,14 +88,15 @@ displayNote total line _ =
 alignRight :: Int -> Int -> String
 alignRight x n = replicate (length (show x) - length (show n)) ' ' ++ show n
 
-markAsDone :: FilePath -> Int -> IO ()
-markAsDone s n = do
+markAsDone :: FilePath -> Int -> Maybe String -> IO ()
+markAsDone s n comment = do
   contents <- readFile s
   let (x, y:t) = splitAt n (lines contents)
+      comment' = fromMaybe "" $ comment >>= (\c' -> Just $ " -- " ++ c')
       c =
         case y of
-          ' ':'-':' ':'[':' ':']':' ':'>':note -> " - [x]" ++ note
-          ' ':'-':' ':'[':' ':']':note -> " - [x]" ++ note
+          ' ':'-':' ':'[':' ':']':' ':'>':note -> " - [x]" ++ note ++ comment'
+          ' ':'-':' ':'[':' ':']':note -> " - [x]" ++ note ++ comment'
           note -> note
       tmp = s ++ ".tmp"
   writeFile (s ++ ".tmp") (unlines $ x ++ c : t)
