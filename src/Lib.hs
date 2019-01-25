@@ -95,7 +95,7 @@ markAsDone :: FilePath -> Int -> Maybe String -> IO ()
 markAsDone s n comment = do
   contents <- readFile s
   let (x, y:t) = splitAt n (lines contents)
-      comment' = fromMaybe "" $ comment >>= (\c' -> Just $ " -- " ++ c')
+      comment' = fromMaybe "" $ comment >>= (\c' -> Just $ " — " ++ c')
       c =
         case y of
           ' ':'-':' ':'[':' ':']':' ':'>':note -> " - [x]" ++ note ++ comment'

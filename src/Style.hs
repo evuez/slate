@@ -2,12 +2,13 @@ module Style
   ( preen
   ) where
 
-import Ansi (bold, resetBold, resetUnderline, underline)
+import Ansi (bold, italic, resetBold, resetUnderline, underline)
 
 data Style
   = Normal
   | Emphasized Char
   | Code
+  | Comment
   deriving (Show)
 
 data Text = Text
@@ -17,6 +18,8 @@ data Text = Text
   } deriving (Show)
 
 getStyle :: Style -> Char -> (Style, String)
+getStyle Comment '—' = (Comment, "—")
+getStyle _ '—' = (Comment, "—" ++ italic)
 getStyle Normal '*' = (Emphasized '*', bold)
 getStyle Normal '_' = (Emphasized '_', bold)
 getStyle Normal '`' = (Code, underline)

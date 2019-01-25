@@ -69,7 +69,7 @@ test_done () {
   slate done -n $SLATE_NAME 0 -c "a comment"
 
   assert_lines_count 2
-  assert_contains "- [x] Task #1 -- a comment"
+  assert_contains "- [x] Task #1 — a comment"
   assert_contains "- [x] Task #2"
 }
 
