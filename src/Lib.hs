@@ -75,18 +75,17 @@ displayNotes :: [String] -> [String]
 displayNotes notes = zipWith (displayNote $ length notes) [0 ..] notes
 
 displayNote :: Int -> Int -> String -> String
-displayNote total line (' ':'-':' ':'[':' ':']':' ':'…':note) =
+displayNote total line (' ':'-':' ':'[':' ':']':' ':'…':' ':note) =
   makeInverse $
-  (paint ternary $ alignRight total line) ++ " -" ++ preen note ++ reset
-displayNote total line (' ':'-':' ':'[':' ':']':note) =
-  (paint ternary $ alignRight total line) ++ " -" ++ preen note ++ reset
-displayNote total line (' ':'-':' ':'[':'x':']':note) =
+  (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset
+displayNote total line (' ':'-':' ':'[':' ':']':' ':note) =
+  (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset
+displayNote total line (' ':'-':' ':'[':'x':']':' ':note) =
   makeCrossed $
-  (paint ternary $ alignRight total line) ++ " -" ++ preen note ++ reset
+  (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset
 displayNote total line _ =
-  (paint warning) $
   (paint ternary $ alignRight total line) ++
-  " - Parsing error: line is malformed"
+  ((paint warning) " Parsing error: line is malformed")
 
 alignRight :: Int -> Int -> String
 alignRight x n = replicate (length (show x) - length (show n)) ' ' ++ show n

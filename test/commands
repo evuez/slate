@@ -115,7 +115,7 @@ test_display () {
   display=$(slate display -n $SLATE_NAME)
 
   assert_lines_count 1
-  assert_var_contains "$display" "0 - Task #1"
+  assert_var_contains "$display" "0 Task #1"
 }
 
 test_wipe () {
