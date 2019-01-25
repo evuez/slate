@@ -2,7 +2,7 @@ module Style
   ( preen
   ) where
 
-import Ansi (bold, resetEmphasis, resetUnderline, underline)
+import Ansi (bold, resetBold, resetUnderline, underline)
 
 data Style
   = Normal
@@ -20,8 +20,8 @@ getStyle :: Style -> Char -> (Style, String)
 getStyle Normal '*' = (Emphasized '*', bold)
 getStyle Normal '_' = (Emphasized '_', bold)
 getStyle Normal '`' = (Code, underline)
-getStyle (Emphasized '*') '*' = (Normal, resetEmphasis)
-getStyle (Emphasized '_') '_' = (Normal, resetEmphasis)
+getStyle (Emphasized '*') '*' = (Normal, resetBold)
+getStyle (Emphasized '_') '_' = (Normal, resetBold)
 getStyle Code '`' = (Normal, resetUnderline)
 getStyle s c = (s, [c])
 

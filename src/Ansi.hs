@@ -17,6 +17,9 @@ reset = "\x1B[0m"
 bold :: String
 bold = "\x1B[1m"
 
+italic :: String
+italic = "\x1B[3m"
+
 underline :: String
 underline = "\x1B[4m"
 
@@ -26,8 +29,11 @@ inverse = "\x1B[7m"
 crossed :: String
 crossed = "\x1B[9m"
 
-resetEmphasis :: String
-resetEmphasis = "\x1B[22m"
+resetBold :: String
+resetBold = "\x1B[22m"
+
+resetItalic :: String
+resetItalic = "\x1B[23m"
 
 resetUnderline :: String
 resetUnderline = "\x1B[24m"
@@ -69,12 +75,6 @@ makeInverse s = inverse ++ s ++ reset
 
 makeCrossed :: String -> String
 makeCrossed s = crossed ++ s ++ reset
-
-makeResetEmphasis :: String -> String
-makeResetEmphasis s = resetEmphasis ++ s ++ reset
-
-makeResetUnderline :: String -> String
-makeResetUnderline s = resetUnderline ++ s ++ reset
 
 paint :: (Palette -> String) -> String -> String
 paint f s = (f palette) ++ s ++ reset
