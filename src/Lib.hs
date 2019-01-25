@@ -75,7 +75,7 @@ displayNotes :: [String] -> [String]
 displayNotes notes = zipWith (displayNote $ length notes) [0 ..] notes
 
 displayNote :: Int -> Int -> String -> String
-displayNote total line (' ':'-':' ':'[':' ':']':' ':'>':note) =
+displayNote total line (' ':'-':' ':'[':' ':']':' ':'…':note) =
   makeInverse $
   (paint ternary $ alignRight total line) ++ " -" ++ preen note ++ reset
 displayNote total line (' ':'-':' ':'[':' ':']':note) =
@@ -98,7 +98,7 @@ markAsDone s n comment = do
       comment' = fromMaybe "" $ comment >>= (\c' -> Just $ " — " ++ c')
       c =
         case y of
-          ' ':'-':' ':'[':' ':']':' ':'>':note -> " - [x]" ++ note ++ comment'
+          ' ':'-':' ':'[':' ':']':' ':'…':note -> " - [x]" ++ note ++ comment'
           ' ':'-':' ':'[':' ':']':note -> " - [x]" ++ note ++ comment'
           note -> note
       tmp = s ++ ".tmp"
@@ -124,15 +124,15 @@ markAsDoing s n = do
   let (x, y:t) = splitAt n ls
       c =
         case y of
-          ' ':'-':' ':'[':m:']':' ':'>':note -> " - [" ++ [m] ++ "]" ++ note
-          ' ':'-':' ':'[':_:']':note -> " - [ ] >" ++ note
+          ' ':'-':' ':'[':m:']':' ':'…':note -> " - [" ++ [m] ++ "]" ++ note
+          ' ':'-':' ':'[':_:']':note -> " - [ ] …" ++ note
           note -> note
       tmp = s ++ ".tmp"
   writeFile tmp (unlines $ x ++ c : t)
   renameFile tmp s
 
 removeDoingMarkForOthers :: Int -> Int -> String -> String
-removeDoingMarkForOthers k l p@(' ':'-':' ':'[':m:']':' ':'>':n)
+removeDoingMarkForOthers k l p@(' ':'-':' ':'[':m:']':' ':'…':n)
   | k /= l = " - [" ++ [m] ++ "]" ++ n
   | otherwise = p
 removeDoingMarkForOthers _ _ n = n

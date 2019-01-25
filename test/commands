@@ -90,7 +90,7 @@ test_doing () {
   slate doing -n $SLATE_NAME 0
 
   assert_lines_count 2
-  assert_contains "- [ ] > Task #1"
+  assert_contains "- [ ] … Task #1"
   assert_contains "- [ ] Task #2"
 
   slate doing -n $SLATE_NAME 0
