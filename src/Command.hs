@@ -18,6 +18,7 @@ type Comment = String
 
 data Command
   = Add (Maybe Slate)
+        (Maybe NoteId)
         Note
   | Display (Maybe Slate)
             (Maybe Filter)
@@ -39,19 +40,29 @@ data Command
          (Maybe Filter)
   deriving (Eq, Show)
 
-name :: Parser (Maybe String)
+name :: Parser (Maybe Slate)
 name =
   optional
     (option
        str
        (long "name" <> short 'n' <> metavar "SLATE" <> help "Name of the slate."))
 
+noteId :: Parser NoteId
+noteId = argument auto (metavar "NOTE ID")
+
 add :: Parser Command
-add = Add <$> name <*> argument str (metavar "NOTE")
+add =
+  Add <$> name <*>
+  optional
+    (option
+       auto
+       (long "parent" <> short 'p' <> metavar "PARENT" <>
+        help "Parent of the new note.")) <*>
+  argument str (metavar "NOTE")
 
 done :: Parser Command
 done =
-  Done <$> name <*> optional (argument auto (metavar "NOTE ID")) <*>
+  Done <$> name <*> optional noteId <*>
   optional
     (option
        str
@@ -59,16 +70,16 @@ done =
         help "Additional comment."))
 
 todo :: Parser Command
-todo = Todo <$> name <*> optional (argument auto (metavar "NOTE ID"))
+todo = Todo <$> name <*> optional noteId
 
 doing :: Parser Command
-doing = Doing <$> name <*> optional (argument auto (metavar "NOTE ID"))
+doing = Doing <$> name <*> optional noteId
 
 edit :: Parser Command
 edit = Edit <$> name
 
 remove :: Parser Command
-remove = Remove <$> name <*> argument auto (metavar "NOTE ID")
+remove = Remove <$> name <*> noteId
 
 display :: Parser Command
 display =

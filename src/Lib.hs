@@ -32,8 +32,9 @@ import System.Process
   )
 
 execute :: Command -> IO ()
-execute (Add s n) =
+execute (Add s Nothing n) =
   getSlatePath s >>= (\x -> appendFile x (" - [ ] " ++ n ++ "\n"))
+execute (Add s (Just p) n) = getSlatePath s >>= (\x -> addSubNote x p n)
 execute (Done s (Just n) comment) =
   getSlatePath s >>= (\x -> markAsDone x n comment)
 execute (Done s Nothing _) =
@@ -56,6 +57,21 @@ execute (Sync) = syncSlates
 initialize :: IO ()
 initialize = configDirectory >>= (\c -> createDirectoryIfMissing True c)
 
+addSubNote :: String -> Int -> String -> IO ()
+addSubNote s p n = do
+  notes <- readNotes s
+  let (headWithParent, (subNotes, rest)) =
+        (span isSubNote) <$> splitAt (p + 1) notes
+      tmp = s ++ ".tmp"
+  writeFile
+    (s ++ ".tmp")
+    (unlines $ headWithParent ++ subNotes ++ ("   - [ ] " ++ n) : rest)
+  renameFile tmp s
+
+isSubNote :: String -> Bool
+isSubNote (' ':' ':' ':'-':_) = True
+isSubNote _ = False
+
 displaySlate :: String -> Maybe String -> IO ()
 displaySlate s Nothing = putStr =<< unlines <$> displayNotes <$> readNotes s
 displaySlate s (Just "done") =
@@ -67,7 +83,7 @@ displaySlate s (Just "doing") =
 displaySlate _ (Just f) = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
 
 readNotes :: String -> IO [String]
-readNotes s = lines <$> readFile s
+readNotes s = filter (not . isSubNote) <$> lines <$> readFile s
 
 displayNotes :: [String] -> [String]
 displayNotes notes = zipWith (displayNote $ length notes) [0 ..] notes
