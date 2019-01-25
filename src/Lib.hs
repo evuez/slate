@@ -57,19 +57,17 @@ initialize :: IO ()
 initialize = configDirectory >>= (\c -> createDirectoryIfMissing True c)
 
 displaySlate :: String -> Maybe String -> IO ()
-displaySlate s Nothing = do
-  contents <- readFile s
-  putStr $ unlines $ displayNotes (lines contents)
-displaySlate s (Just "done") = do
-  contents <- readFile s
-  putStr $ unlines $ filter F.done $ displayNotes (lines contents)
-displaySlate s (Just "todo") = do
-  contents <- readFile s
-  putStr $ unlines $ filter F.todo $ displayNotes (lines contents)
-displaySlate s (Just "doing") = do
-  contents <- readFile s
-  putStr $ unlines $ filter F.doing $ displayNotes (lines contents)
+displaySlate s Nothing = putStr =<< unlines <$> displayNotes <$> readNotes s
+displaySlate s (Just "done") =
+  putStr =<< unlines <$> filter F.done <$> displayNotes <$> readNotes s
+displaySlate s (Just "todo") =
+  putStr =<< unlines <$> filter F.todo <$> displayNotes <$> readNotes s
+displaySlate s (Just "doing") =
+  putStr =<< unlines <$> filter F.doing <$> displayNotes <$> readNotes s
 displaySlate _ (Just f) = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
+
+readNotes :: String -> IO [String]
+readNotes s = lines <$> readFile s
 
 displayNotes :: [String] -> [String]
 displayNotes notes = zipWith (displayNote $ length notes) [0 ..] notes
@@ -88,7 +86,8 @@ displayNote total line _ =
   ((paint warning) " Parsing error: line is malformed")
 
 alignRight :: Int -> Int -> String
-alignRight x n = replicate (length (show x) - length (show n)) ' ' ++ show n
+alignRight x n =
+  replicate (length (show $ x - 1) - length (show n)) ' ' ++ show n
 
 markAsDone :: FilePath -> Int -> Maybe String -> IO ()
 markAsDone s n comment = do
