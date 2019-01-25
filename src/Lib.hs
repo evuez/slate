@@ -36,37 +36,40 @@ execute (Add s n) =
   getSlatePath s >>= (\x -> appendFile x (" - [ ] " ++ n ++ "\n"))
 execute (Done s (Just n) comment) =
   getSlatePath s >>= (\x -> markAsDone x n comment)
-execute (Done s Nothing _) = getSlatePath s >>= (\x -> displaySlate x "done")
+execute (Done s Nothing _) =
+  getSlatePath s >>= (\x -> displaySlate x (Just "done"))
 execute (Todo s (Just n)) = getSlatePath s >>= (\x -> markAsTodo x n)
-execute (Todo s Nothing) = getSlatePath s >>= (\x -> displaySlate x "todo")
+execute (Todo s Nothing) =
+  getSlatePath s >>= (\x -> displaySlate x (Just "todo"))
 execute (Doing s (Just n)) = getSlatePath s >>= (\x -> markAsDoing x n)
-execute (Doing s Nothing) = getSlatePath s >>= (\x -> displaySlate x "doing")
+execute (Doing s Nothing) =
+  getSlatePath s >>= (\x -> displaySlate x (Just "doing"))
 execute (Edit s) = getSlatePath s >>= editSlate
 execute (Remove s n) = getSlatePath s >>= (\x -> removeNote x n)
 execute (Display s f) = getSlatePath s >>= (\x -> displaySlate x f)
 execute (Rename sc sn) = renameSlate sc sn
-execute (Wipe s "") = getSlatePath s >>= removeFile
-execute (Wipe s f) = getSlatePath s >>= (\x -> wipeSlate x f)
+execute (Wipe s Nothing) = getSlatePath s >>= removeFile
+execute (Wipe s (Just f)) = getSlatePath s >>= (\x -> wipeSlate x f)
 execute (Status s) = getSlatePath s >>= (\x -> displayStatus x)
 execute (Sync) = syncSlates
 
 initialize :: IO ()
 initialize = configDirectory >>= (\c -> createDirectoryIfMissing True c)
 
-displaySlate :: String -> String -> IO ()
-displaySlate s "" = do
+displaySlate :: String -> Maybe String -> IO ()
+displaySlate s Nothing = do
   contents <- readFile s
   putStr $ unlines $ displayNotes (lines contents)
-displaySlate s "done" = do
+displaySlate s (Just "done") = do
   contents <- readFile s
   putStr $ unlines $ filter F.done $ displayNotes (lines contents)
-displaySlate s "todo" = do
+displaySlate s (Just "todo") = do
   contents <- readFile s
   putStr $ unlines $ filter F.todo $ displayNotes (lines contents)
-displaySlate s "doing" = do
+displaySlate s (Just "doing") = do
   contents <- readFile s
   putStr $ unlines $ filter F.doing $ displayNotes (lines contents)
-displaySlate _ f = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
+displaySlate _ (Just f) = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
 
 displayNotes :: [String] -> [String]
 displayNotes notes = zipWith (displayNote $ length notes) [0 ..] notes
@@ -150,8 +153,8 @@ removeNote s n = do
 
 renameSlate :: String -> String -> IO ()
 renameSlate sc sn = do
-  current <- getSlatePath sc
-  new <- getSlatePath sn
+  current <- getSlatePath (Just sc)
+  new <- getSlatePath (Just sn)
   renameFile current new
 
 wipeSlate :: FilePath -> String -> IO ()

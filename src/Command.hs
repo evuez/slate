@@ -17,34 +17,34 @@ type Filter = String
 type Comment = String
 
 data Command
-  = Add Slate
+  = Add (Maybe Slate)
         Note
-  | Done Slate
+  | Display (Maybe Slate)
+            (Maybe Filter)
+  | Doing (Maybe Slate)
+          (Maybe NoteId)
+  | Done (Maybe Slate)
          (Maybe NoteId)
          (Maybe Comment)
-  | Todo Slate
-         (Maybe NoteId)
-  | Doing Slate
-          (Maybe NoteId)
-  | Edit Slate
-  | Remove Slate
+  | Edit (Maybe Slate)
+  | Remove (Maybe Slate)
            NoteId
-  | Display Slate
-            Filter
   | Rename Slate
            Slate
-  | Wipe Slate
-         Filter
-  | Status Slate
+  | Status (Maybe Slate)
   | Sync
+  | Todo (Maybe Slate)
+         (Maybe NoteId)
+  | Wipe (Maybe Slate)
+         (Maybe Filter)
   deriving (Eq, Show)
 
-name :: Parser String
+name :: Parser (Maybe String)
 name =
-  option
-    str
-    (long "name" <> short 'n' <> metavar "SLATE" <> help "Name of the slate." <>
-     value "")
+  optional
+    (option
+       str
+       (long "name" <> short 'n' <> metavar "SLATE" <> help "Name of the slate."))
 
 add :: Parser Command
 add = Add <$> name <*> argument str (metavar "NOTE")
@@ -73,10 +73,10 @@ remove = Remove <$> name <*> argument auto (metavar "NOTE ID")
 display :: Parser Command
 display =
   Display <$> name <*>
-  option
-    str
-    (long "only" <> short 'o' <> help "Display only done / todo notes." <>
-     value "")
+  optional
+    (option
+       str
+       (long "only" <> short 'o' <> help "Display only done / todo notes."))
 
 rename :: Parser Command
 rename =
@@ -86,9 +86,10 @@ rename =
 wipe :: Parser Command
 wipe =
   Wipe <$> name <*>
-  option
-    str
-    (long "only" <> short 'o' <> help "Wipe only done / todo notes." <> value "")
+  optional
+    (option
+       str
+       (long "only" <> short 'o' <> help "Wipe only done / todo notes."))
 
 status :: Parser Command
 status = Status <$> name

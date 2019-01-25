@@ -61,11 +61,11 @@ slateName = do
     True -> readFile (d ++ "/.slate") >>= (return . headOrFail . lines)
     False -> return $ takeBaseName d
 
-getSlatePath :: String -> IO FilePath
-getSlatePath "" = do
+getSlatePath :: Maybe String -> IO FilePath
+getSlatePath Nothing = do
   s <- slateName
   dir <- configDirectory
   return $ dir ++ s ++ ".md"
-getSlatePath s = do
+getSlatePath (Just s) = do
   dir <- configDirectory
   return $ dir ++ s ++ ".md"
