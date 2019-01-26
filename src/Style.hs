@@ -9,13 +9,12 @@ data Style
   | Emphasized Char
   | Code
   | Comment
-  deriving (Show)
 
 data Text = Text
   { style :: Style
   , parsed :: String
   , rest :: String
-  } deriving (Show)
+  }
 
 getStyle :: Style -> Char -> (Style, String)
 getStyle Comment '—' = (Comment, "—")

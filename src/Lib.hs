@@ -1,7 +1,7 @@
 module Lib
   ( initialize
   , execute
-  , parser
+  , C.parser
   ) where
 
 import Ansi
@@ -13,7 +13,7 @@ import Ansi
   , progress
   , reset
   )
-import Command (Command(..), parser)
+import qualified Command as C (Command(..), parser)
 import Config (configDirectory, getConfigValue, getSlatePath)
 import Data.Maybe (fromMaybe, listToMaybe)
 import qualified Filter as F (doing, done, todo)
@@ -31,28 +31,67 @@ import System.Process
   , waitForProcess
   )
 
-execute :: Command -> IO ()
-execute (Add s Nothing n) =
+class Dump a where
+  dump :: a -> String
+
+data Status
+  = Todo
+  | Doing
+  | Done
+
+data Task = Task -- Add line number
+  { status :: Status
+  , text :: String
+  , comment :: Maybe String
+  , level :: Int
+  }
+
+data ParsingError =
+  ParsingError String
+
+type Line = Either ParsingError Task
+
+instance Dump Task where
+  dump (Task Todo text comment level) =
+    (replicate (level * 3) ' ') ++ "- [ ] " ++ text ++ (dumpComment comment)
+  dump (Task Doing text comment level) =
+    (replicate (level * 3) ' ') ++ "- [ ] …" ++ text ++ (dumpComment comment)
+  dump (Task Done text comment level) =
+    (replicate (level * 3) ' ') ++ "- [x] " ++ text ++ (dumpComment comment)
+
+instance Dump ParsingError where
+  dump (ParsingError line) = line
+
+instance (Dump a, Dump b) => Dump (Either a b) where
+  dump (Left l) = dump l
+  dump (Right r) = dump r
+
+dumpComment :: Maybe String -> String
+dumpComment (Just comment) = " — " ++ comment
+dumpComment Nothing = ""
+
+execute :: C.Command -> IO ()
+execute (C.Add s Nothing n) =
   getSlatePath s >>= (\x -> appendFile x (" - [ ] " ++ n ++ "\n"))
-execute (Add s (Just p) n) = getSlatePath s >>= (\x -> addSubNote x p n)
-execute (Done s (Just n) comment) =
+execute (C.Add s (Just p) n) = getSlatePath s >>= (\x -> addSubNote x p n)
+execute (C.Done s (Just n) comment) =
   getSlatePath s >>= (\x -> markAsDone x n comment)
-execute (Done s Nothing _) =
+execute (C.Done s Nothing _) =
   getSlatePath s >>= (\x -> displaySlate x (Just "done"))
-execute (Todo s (Just n)) = getSlatePath s >>= (\x -> markAsTodo x n)
-execute (Todo s Nothing) =
+execute (C.Todo s (Just n)) = getSlatePath s >>= (\x -> markAsTodo x n)
+execute (C.Todo s Nothing) =
   getSlatePath s >>= (\x -> displaySlate x (Just "todo"))
-execute (Doing s (Just n)) = getSlatePath s >>= (\x -> markAsDoing x n)
-execute (Doing s Nothing) =
+execute (C.Doing s (Just n)) = getSlatePath s >>= (\x -> markAsDoing x n)
+execute (C.Doing s Nothing) =
   getSlatePath s >>= (\x -> displaySlate x (Just "doing"))
-execute (Edit s) = getSlatePath s >>= editSlate
-execute (Remove s n) = getSlatePath s >>= (\x -> removeNote x n)
-execute (Display s f) = getSlatePath s >>= (\x -> displaySlate x f)
-execute (Rename sc sn) = renameSlate sc sn
-execute (Wipe s Nothing) = getSlatePath s >>= removeFile
-execute (Wipe s (Just f)) = getSlatePath s >>= (\x -> wipeSlate x f)
-execute (Status s) = getSlatePath s >>= (\x -> displayStatus x)
-execute (Sync) = syncSlates
+execute (C.Edit s) = getSlatePath s >>= editSlate
+execute (C.Remove s n) = getSlatePath s >>= (\x -> removeNote x n)
+execute (C.Display s f) = getSlatePath s >>= (\x -> displaySlate x f)
+execute (C.Rename sc sn) = renameSlate sc sn
+execute (C.Wipe s Nothing) = getSlatePath s >>= removeFile
+execute (C.Wipe s (Just f)) = getSlatePath s >>= (\x -> wipeSlate x f)
+execute (C.Status s) = getSlatePath s >>= (\x -> displayStatus x)
+execute (C.Sync) = syncSlates
 
 initialize :: IO ()
 initialize = configDirectory >>= (\c -> createDirectoryIfMissing True c)
@@ -61,16 +100,21 @@ addSubNote :: String -> Int -> String -> IO ()
 addSubNote s p n = do
   notes <- readNotes s
   let (headWithParent, (subNotes, rest)) =
-        (span isSubNote) <$> splitAt (p + 1) notes
+        (span (\n -> either (\_ -> True) ((> 0) . level) n)) <$>
+        splitAt (p + 1) notes -- Won't work if there's a sublist before p
       tmp = s ++ ".tmp"
   writeFile
     (s ++ ".tmp")
-    (unlines $ headWithParent ++ subNotes ++ ("   - [ ] " ++ n) : rest)
+    (dumpLines $
+     headWithParent ++ subNotes ++ (Right (Task Todo n Nothing 1)) : rest)
   renameFile tmp s
 
 isSubNote :: String -> Bool
 isSubNote (' ':' ':' ':'-':_) = True
 isSubNote _ = False
+
+dumpLines :: [Line] -> String
+dumpLines lines = unlines $ map dump lines
 
 displaySlate :: String -> Maybe String -> IO ()
 displaySlate s Nothing = putStr =<< unlines <$> displayNotes <$> readNotes s
@@ -82,22 +126,30 @@ displaySlate s (Just "doing") =
   putStr =<< unlines <$> filter F.doing <$> displayNotes <$> readNotes s
 displaySlate _ (Just f) = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
 
-readNotes :: String -> IO [String]
-readNotes s = filter (not . isSubNote) <$> lines <$> readFile s
+readNotes :: String -> IO [Line]
+readNotes s =
+  map buildNote <$> filter (not . isSubNote) <$> lines <$> readFile s
 
-displayNotes :: [String] -> [String]
+buildNote :: String -> Line
+buildNote (' ':'-':' ':'[':' ':']':' ':'…':' ':note) =
+  Right (Task Doing note Nothing 0)
+buildNote (' ':'-':' ':'[':' ':']':' ':note) = Right (Task Todo note Nothing 0)
+buildNote (' ':'-':' ':'[':'x':']':' ':note) = Right (Task Done note Nothing 0)
+buildNote text = Left (ParsingError text)
+
+displayNotes :: [Line] -> [String]
 displayNotes notes = zipWith (displayNote $ length notes) [0 ..] notes
 
-displayNote :: Int -> Int -> String -> String
-displayNote total line (' ':'-':' ':'[':' ':']':' ':'…':' ':note) =
+displayNote :: Int -> Int -> Line -> String
+displayNote total line (Right (Task Doing note Nothing 0)) =
   makeInverse $
   (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset
-displayNote total line (' ':'-':' ':'[':' ':']':' ':note) =
+displayNote total line (Right (Task Todo note Nothing 0)) =
   (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset
-displayNote total line (' ':'-':' ':'[':'x':']':' ':note) =
+displayNote total line (Right (Task Done note Nothing 0)) =
   makeCrossed $
   (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset
-displayNote total line _ =
+displayNote total line (Left (ParsingError _)) =
   (paint ternary $ alignRight total line) ++
   ((paint warning) " Parsing error: line is malformed")
 
@@ -188,12 +240,13 @@ displayStatus :: FilePath -> IO ()
 displayStatus s = do
   (syncColor, syncString) <- getSyncStatus s
   contents <- readFile s
-  let done = fromIntegral $ length $ filter F.done (lines contents) :: Double
+  notes <- readNotes s
+  let done = fromIntegral $ length $ filter F.done (lines contents) :: Double -- check if we still need string-based filters
       todo = fromIntegral $ length $ filter F.todo (lines contents) :: Double
       doing =
         fromMaybe "" $
         (\x -> Just $ "\n" ++ x) =<<
-        (listToMaybe $ filter F.doing $ displayNotes (lines contents))
+        (listToMaybe $ filter F.doing $ displayNotes notes)
       percent = done / (done + todo) * 100
       stats =
         [ (ternary palette)
