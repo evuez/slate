@@ -43,7 +43,7 @@ data Task = Task -- Add line number
   { status :: Status
   , text :: String
   , comment :: Maybe String
-  , level :: Int
+  , children :: [Task]
   }
 
 data ParsingError =
@@ -52,12 +52,9 @@ data ParsingError =
 type Line = Either ParsingError Task
 
 instance Dump Task where
-  dump (Task Todo text comment level) =
-    (replicate (level * 3) ' ') ++ "- [ ] " ++ text ++ (dumpComment comment)
-  dump (Task Doing text comment level) =
-    (replicate (level * 3) ' ') ++ "- [ ] …" ++ text ++ (dumpComment comment)
-  dump (Task Done text comment level) =
-    (replicate (level * 3) ' ') ++ "- [x] " ++ text ++ (dumpComment comment)
+  dump (Task Todo text comment children) = unlines $ (" - [ ] " ++ text ++ (dumpComment comment)) : (dumpChildren children)
+  dump (Task Doing text comment children) = unlines $ (" - [ ] …" ++ text ++ (dumpComment comment)): (dumpChildren children)
+  dump (Task Done text comment children) = unlines $ (" - [x] " ++ text ++ (dumpComment comment)): (dumpChildren children)
 
 instance Dump ParsingError where
   dump (ParsingError line) = line
@@ -69,6 +66,9 @@ instance (Dump a, Dump b) => Dump (Either a b) where
 dumpComment :: Maybe String -> String
 dumpComment (Just comment) = " — " ++ comment
 dumpComment Nothing = ""
+
+dumpChildren :: [Task] -> [String]
+dumpChildren tasks = map ((++ "  ") . dump) tasks
 
 execute :: C.Command -> IO ()
 execute (C.Add s Nothing n) =
@@ -113,6 +113,17 @@ isSubNote :: String -> Bool
 isSubNote (' ':' ':' ':'-':_) = True
 isSubNote _ = False
 
+readNotes :: String -> IO [Line]
+readNotes s =
+  map buildNote <$> lines <$> readFile s
+
+readNotes :: String -> IO [Line]
+readNotes = loadNotes [] <$> lines <$> readFile s
+
+loadNotes :: [Line] -> [String] -> [Line]
+loadNotes [] x:xs = loadNotes [buildNote x] xs
+loadNotes lines [] = lines
+
 dumpLines :: [Line] -> String
 dumpLines lines = unlines $ map dump lines
 
@@ -126,27 +137,23 @@ displaySlate s (Just "doing") =
   putStr =<< unlines <$> filter F.doing <$> displayNotes <$> readNotes s
 displaySlate _ (Just f) = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
 
-readNotes :: String -> IO [Line]
-readNotes s =
-  map buildNote <$> filter (not . isSubNote) <$> lines <$> readFile s
-
 buildNote :: String -> Line
 buildNote (' ':'-':' ':'[':' ':']':' ':'…':' ':note) =
-  Right (Task Doing note Nothing 0)
-buildNote (' ':'-':' ':'[':' ':']':' ':note) = Right (Task Todo note Nothing 0)
-buildNote (' ':'-':' ':'[':'x':']':' ':note) = Right (Task Done note Nothing 0)
+  Right (Task Doing note Nothing [])
+buildNote (' ':'-':' ':'[':' ':']':' ':note) = Right (Task Todo note Nothing [])
+buildNote (' ':'-':' ':'[':'x':']':' ':note) = Right (Task Done note Nothing [])
 buildNote text = Left (ParsingError text)
 
 displayNotes :: [Line] -> [String]
 displayNotes notes = zipWith (displayNote $ length notes) [0 ..] notes
 
 displayNote :: Int -> Int -> Line -> String
-displayNote total line (Right (Task Doing note Nothing 0)) =
+displayNote total line (Right (Task Doing note Nothing [])) =
   makeInverse $
   (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset
-displayNote total line (Right (Task Todo note Nothing 0)) =
+displayNote total line (Right (Task Todo note Nothing [])) =
   (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset
-displayNote total line (Right (Task Done note Nothing 0)) =
+displayNote total line (Right (Task Done note Nothing [])) =
   makeCrossed $
   (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset
 displayNote total line (Left (ParsingError _)) =
