@@ -39,7 +39,7 @@ data Status
   | Doing
   | Done
 
-data Task = Task -- Add line number
+data Task = Task -- Add line number!!
   { status :: Status
   , text :: String
   , comment :: Maybe String
@@ -99,14 +99,12 @@ initialize = configDirectory >>= (\c -> createDirectoryIfMissing True c)
 addSubNote :: String -> Int -> String -> IO ()
 addSubNote s p n = do
   notes <- readNotes s
-  let (headWithParent, (subNotes, rest)) =
-        (span (\n -> either (\_ -> True) ((> 0) . level) n)) <$>
-        splitAt (p + 1) notes -- Won't work if there's a sublist before p
+  let (head, parent:rest) = splitAt p notes
+      updatedParent = addChild parent (Right (Task Todo n Nothing []))
       tmp = s ++ ".tmp"
   writeFile
     (s ++ ".tmp")
-    (dumpLines $
-     headWithParent ++ subNotes ++ (Right (Task Todo n Nothing 1)) : rest)
+    (dumpLines $ head ++ (updatedParent:rest))
   renameFile tmp s
 
 isSubNote :: String -> Bool
@@ -114,15 +112,26 @@ isSubNote (' ':' ':' ':'-':_) = True
 isSubNote _ = False
 
 readNotes :: String -> IO [Line]
-readNotes s =
-  map buildNote <$> lines <$> readFile s
-
-readNotes :: String -> IO [Line]
-readNotes = loadNotes [] <$> lines <$> readFile s
+--readNotes s = map buildNote <$> lines <$> readFile s
+readNotes s = loadNotes [] <$> lines <$> readFile s
 
 loadNotes :: [Line] -> [String] -> [Line]
-loadNotes [] x:xs = loadNotes [buildNote x] xs
+loadNotes [] (x:xs) = loadNotes [buildNote x] xs
+loadNotes (parent:rest) (child@(' ':' ':'-':_):xs) = loadNotes ((addChild parent (buildNote child)):rest) xs
 loadNotes lines [] = lines
+
+addChild :: Line -> Line -> Line
+addChild (Left err) _ = Left err -- this needs to change, it'd be hard to deal with line numbers this way <-- it won't be once Task have line numbers
+addChild (Right parent) (Right child)  = Right (parent { children = (children parent) ++ [child] })
+addChild (Right parent) (Left _)  = Right parent
+
+buildNote :: String -> Line
+buildNote (' ':'-':' ':'[':' ':']':' ':'…':' ':note) =
+  Right (Task Doing note Nothing [])
+buildNote (' ':'-':' ':'[':' ':']':' ':note) = Right (Task Todo note Nothing [])
+buildNote (' ':'-':' ':'[':'x':']':' ':note) = Right (Task Done note Nothing [])
+buildNote (' ':xs@(' ':'-':_)) = buildNote xs
+buildNote text = Left (ParsingError text)
 
 dumpLines :: [Line] -> String
 dumpLines lines = unlines $ map dump lines
@@ -136,13 +145,6 @@ displaySlate s (Just "todo") =
 displaySlate s (Just "doing") =
   putStr =<< unlines <$> filter F.doing <$> displayNotes <$> readNotes s
 displaySlate _ (Just f) = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
-
-buildNote :: String -> Line
-buildNote (' ':'-':' ':'[':' ':']':' ':'…':' ':note) =
-  Right (Task Doing note Nothing [])
-buildNote (' ':'-':' ':'[':' ':']':' ':note) = Right (Task Todo note Nothing [])
-buildNote (' ':'-':' ':'[':'x':']':' ':note) = Right (Task Done note Nothing [])
-buildNote text = Left (ParsingError text)
 
 displayNotes :: [Line] -> [String]
 displayNotes notes = zipWith (displayNote $ length notes) [0 ..] notes
