@@ -31,44 +31,32 @@ import System.Process
   , waitForProcess
   )
 
-class Dump a where
-  dump :: a -> String
-
-data Status
+data State
   = Todo
   | Doing
   | Done
 
 data Task = Task -- Add line number!!
-  { status :: Status
+  { status :: State
   , text :: String
   , comment :: Maybe String
   , children :: [Task]
   }
 
-data ParsingError =
-  ParsingError String
+dumpTask :: Task -> String
+dumpTask (Task state text comment children) = (mconcat [" - ", dumpState state, text, dumpComment comment, concatMap (("\n  " ++) . dumpTask) children])
 
-type Line = Either ParsingError Task
-
-instance Dump Task where
-  dump (Task Todo text comment children) = unlines $ (" - [ ] " ++ text ++ (dumpComment comment)) : (dumpChildren children)
-  dump (Task Doing text comment children) = unlines $ (" - [ ] …" ++ text ++ (dumpComment comment)): (dumpChildren children)
-  dump (Task Done text comment children) = unlines $ (" - [x] " ++ text ++ (dumpComment comment)): (dumpChildren children)
-
-instance Dump ParsingError where
-  dump (ParsingError line) = line
-
-instance (Dump a, Dump b) => Dump (Either a b) where
-  dump (Left l) = dump l
-  dump (Right r) = dump r
+dumpState :: State -> String
+dumpState Todo = "[ ] "
+dumpState Doing = "[ ] …"
+dumpState Done = "[x] "
 
 dumpComment :: Maybe String -> String
 dumpComment (Just comment) = " — " ++ comment
 dumpComment Nothing = ""
 
 dumpChildren :: [Task] -> [String]
-dumpChildren tasks = map ((++ "  ") . dump) tasks
+dumpChildren tasks = map (("  " ++) . dumpTask) tasks
 
 execute :: C.Command -> IO ()
 execute (C.Add s Nothing n) =
@@ -100,41 +88,39 @@ addSubNote :: String -> Int -> String -> IO ()
 addSubNote s p n = do
   notes <- readNotes s
   let (head, parent:rest) = splitAt p notes
-      updatedParent = addChild parent (Right (Task Todo n Nothing []))
+      updatedParent = addChild parent (Task Todo n Nothing [])
       tmp = s ++ ".tmp"
   writeFile
     (s ++ ".tmp")
-    (dumpLines $ head ++ (updatedParent:rest))
+    (dumpTasks $ head ++ (updatedParent:rest))
   renameFile tmp s
 
 isSubNote :: String -> Bool
 isSubNote (' ':' ':' ':'-':_) = True
 isSubNote _ = False
 
-readNotes :: String -> IO [Line]
+readNotes :: String -> IO [Task]
 --readNotes s = map buildNote <$> lines <$> readFile s
 readNotes s = loadNotes [] <$> lines <$> readFile s
 
-loadNotes :: [Line] -> [String] -> [Line]
-loadNotes [] (x:xs) = loadNotes [buildNote x] xs
+loadNotes :: [Task] -> [String] -> [Task]
 loadNotes (parent:rest) (child@(' ':' ':'-':_):xs) = loadNotes ((addChild parent (buildNote child)):rest) xs
-loadNotes lines [] = lines
+loadNotes [] (x:xs) = loadNotes [buildNote x] xs
+loadNotes tasks (x:xs) = loadNotes (( buildNote x ):tasks) xs
+loadNotes tasks [] = reverse tasks
 
-addChild :: Line -> Line -> Line
-addChild (Left err) _ = Left err -- this needs to change, it'd be hard to deal with line numbers this way <-- it won't be once Task have line numbers
-addChild (Right parent) (Right child)  = Right (parent { children = (children parent) ++ [child] })
-addChild (Right parent) (Left _)  = Right parent
+addChild :: Task -> Task -> Task
+addChild parent child  = parent { children = (children parent) ++ [child] }
 
-buildNote :: String -> Line
-buildNote (' ':'-':' ':'[':' ':']':' ':'…':' ':note) =
-  Right (Task Doing note Nothing [])
-buildNote (' ':'-':' ':'[':' ':']':' ':note) = Right (Task Todo note Nothing [])
-buildNote (' ':'-':' ':'[':'x':']':' ':note) = Right (Task Done note Nothing [])
+buildNote :: String -> Task
+buildNote (' ':'-':' ':'[':' ':']':' ':'…':' ':note) = Task Doing note Nothing []
+buildNote (' ':'-':' ':'[':' ':']':' ':note) = Task Todo note Nothing []
+buildNote (' ':'-':' ':'[':'x':']':' ':note) = Task Done note Nothing []
 buildNote (' ':xs@(' ':'-':_)) = buildNote xs
-buildNote text = Left (ParsingError text)
+buildNote text = error $ "Error: \"" ++ text ++ "\" is not a valid task."
 
-dumpLines :: [Line] -> String
-dumpLines lines = unlines $ map dump lines
+dumpTasks :: [Task] -> String
+dumpTasks tasks = unlines $ map dumpTask tasks
 
 displaySlate :: String -> Maybe String -> IO ()
 displaySlate s Nothing = putStr =<< unlines <$> displayNotes <$> readNotes s
@@ -146,21 +132,18 @@ displaySlate s (Just "doing") =
   putStr =<< unlines <$> filter F.doing <$> displayNotes <$> readNotes s
 displaySlate _ (Just f) = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
 
-displayNotes :: [Line] -> [String]
+displayNotes :: [Task] -> [String]
 displayNotes notes = zipWith (displayNote $ length notes) [0 ..] notes
 
-displayNote :: Int -> Int -> Line -> String
-displayNote total line (Right (Task Doing note Nothing [])) =
+displayNote :: Int -> Int -> Task -> String
+displayNote total line (Task Doing note Nothing []) =
   makeInverse $
   (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset
-displayNote total line (Right (Task Todo note Nothing [])) =
+displayNote total line (Task Todo note Nothing []) =
   (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset
-displayNote total line (Right (Task Done note Nothing [])) =
+displayNote total line (Task Done note Nothing []) =
   makeCrossed $
   (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset
-displayNote total line (Left (ParsingError _)) =
-  (paint ternary $ alignRight total line) ++
-  ((paint warning) " Parsing error: line is malformed")
 
 alignRight :: Int -> Int -> String
 alignRight x n =
