@@ -44,7 +44,14 @@ data Task = Task -- Add line number!!
   }
 
 dumpTask :: Task -> String
-dumpTask (Task state text comment children) = (mconcat [" - ", dumpState state, text, dumpComment comment, concatMap (("\n  " ++) . dumpTask) children])
+dumpTask (Task state' text' comment' children') =
+  (mconcat
+     [ " - "
+     , dumpState state'
+     , text'
+     , dumpComment comment'
+     , concatMap (("\n  " ++) . dumpTask) children'
+     ])
 
 dumpState :: State -> String
 dumpState Todo = "[ ] "
@@ -52,18 +59,15 @@ dumpState Doing = "[ ] …"
 dumpState Done = "[x] "
 
 dumpComment :: Maybe String -> String
-dumpComment (Just comment) = " — " ++ comment
+dumpComment (Just comment') = " — " ++ comment'
 dumpComment Nothing = ""
-
-dumpChildren :: [Task] -> [String]
-dumpChildren tasks = map (("  " ++) . dumpTask) tasks
 
 execute :: C.Command -> IO ()
 execute (C.Add s Nothing n) =
   getSlatePath s >>= (\x -> appendFile x (" - [ ] " ++ n ++ "\n"))
 execute (C.Add s (Just p) n) = getSlatePath s >>= (\x -> addSubNote x p n)
-execute (C.Done s (Just n) comment) =
-  getSlatePath s >>= (\x -> markAsDone x n comment)
+execute (C.Done s (Just n) comment') =
+  getSlatePath s >>= (\x -> markAsDone x n comment')
 execute (C.Done s Nothing _) =
   getSlatePath s >>= (\x -> displaySlate x (Just "done"))
 execute (C.Todo s (Just n)) = getSlatePath s >>= (\x -> markAsTodo x n)
@@ -87,77 +91,79 @@ initialize = configDirectory >>= (\c -> createDirectoryIfMissing True c)
 addSubNote :: String -> Int -> String -> IO ()
 addSubNote s p n = do
   notes <- readNotes s
-  let (head, parent:rest) = splitAt p notes
+  let (head', parent:rest) = splitAt p notes
       updatedParent = addChild parent (Task Todo n Nothing [])
       tmp = s ++ ".tmp"
-  writeFile
-    (s ++ ".tmp")
-    (dumpTasks $ head ++ (updatedParent:rest))
+  writeFile (s ++ ".tmp") (dumpTasks $ head' ++ (updatedParent : rest))
   renameFile tmp s
 
-isSubNote :: String -> Bool
-isSubNote (' ':' ':' ':'-':_) = True
-isSubNote _ = False
-
 readNotes :: String -> IO [Task]
---readNotes s = map buildNote <$> lines <$> readFile s
 readNotes s = loadNotes [] <$> lines <$> readFile s
 
 loadNotes :: [Task] -> [String] -> [Task]
-loadNotes (parent:rest) (child@(' ':' ':'-':_):xs) = loadNotes ((addChild parent (buildNote child)):rest) xs
+loadNotes (parent:rest) (child@(' ':' ':' ':'-':_):xs) =
+  loadNotes ((addChild parent (buildNote child)) : rest) xs
 loadNotes [] (x:xs) = loadNotes [buildNote x] xs
-loadNotes tasks (x:xs) = loadNotes (( buildNote x ):tasks) xs
+loadNotes tasks (x:xs) = loadNotes ((buildNote x) : tasks) xs
 loadNotes tasks [] = reverse tasks
 
 addChild :: Task -> Task -> Task
-addChild parent child  = parent { children = (children parent) ++ [child] }
+addChild parent child = parent {children = (children parent) ++ [child]}
 
 buildNote :: String -> Task
-buildNote (' ':'-':' ':'[':' ':']':' ':'…':' ':note) = Task Doing note Nothing []
+buildNote (' ':'-':' ':'[':' ':']':' ':'…':' ':note) =
+  Task Doing note Nothing []
 buildNote (' ':'-':' ':'[':' ':']':' ':note) = Task Todo note Nothing []
 buildNote (' ':'-':' ':'[':'x':']':' ':note) = Task Done note Nothing []
-buildNote (' ':xs@(' ':'-':_)) = buildNote xs
-buildNote text = error $ "Error: \"" ++ text ++ "\" is not a valid task."
+buildNote (' ':' ':xs@(' ':'-':_)) = buildNote xs
+buildNote line = error $ "Error: \"" ++ line ++ "\" is not a valid task."
 
 dumpTasks :: [Task] -> String
 dumpTasks tasks = unlines $ map dumpTask tasks
 
 displaySlate :: String -> Maybe String -> IO ()
-displaySlate s Nothing = putStr =<< unlines <$> displayNotes <$> readNotes s
+displaySlate s Nothing = putStr =<< unlines <$> displayNotes 0 <$> readNotes s
 displaySlate s (Just "done") =
-  putStr =<< unlines <$> filter F.done <$> displayNotes <$> readNotes s
+  putStr =<< unlines <$> filter F.done <$> displayNotes 0 <$> readNotes s
 displaySlate s (Just "todo") =
-  putStr =<< unlines <$> filter F.todo <$> displayNotes <$> readNotes s
+  putStr =<< unlines <$> filter F.todo <$> displayNotes 0 <$> readNotes s
 displaySlate s (Just "doing") =
-  putStr =<< unlines <$> filter F.doing <$> displayNotes <$> readNotes s
+  putStr =<< unlines <$> filter F.doing <$> displayNotes 0 <$> readNotes s
 displaySlate _ (Just f) = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
 
-displayNotes :: [Task] -> [String]
-displayNotes notes = zipWith (displayNote $ length notes) [0 ..] notes
+displayNotes :: Int -> [Task] -> [String]
+displayNotes level notes =
+  concat $ zipWith (displayNote level $ length notes) [0 ..] notes
 
-displayNote :: Int -> Int -> Task -> String
-displayNote total line (Task Doing note Nothing []) =
-  makeInverse $
-  (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset
-displayNote total line (Task Todo note Nothing []) =
-  (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset
-displayNote total line (Task Done note Nothing []) =
-  makeCrossed $
-  (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset
+displayNote :: Int -> Int -> Int -> Task -> [String]
+displayNote level total line (Task Todo note Nothing children') =
+  ((replicate level ' ') ++
+   (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset) :
+  (displayNotes 1 children')
+displayNote level total line (Task Doing note Nothing children') =
+  ((replicate level ' ') ++
+   (makeInverse $
+    (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset)) :
+  (displayNotes 1 children')
+displayNote level total line (Task Done note Nothing children') =
+  ((replicate level ' ') ++
+   (makeCrossed $
+    (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset)) :
+  (displayNotes 1 children')
 
 alignRight :: Int -> Int -> String
 alignRight x n =
   replicate (length (show $ x - 1) - length (show n)) ' ' ++ show n
 
 markAsDone :: FilePath -> Int -> Maybe String -> IO ()
-markAsDone s n comment = do
+markAsDone s n comment' = do
   contents <- readFile s
   let (x, y:t) = splitAt n (lines contents)
-      comment' = fromMaybe "" $ comment >>= (\c' -> Just $ " — " ++ c')
+      comment'' = fromMaybe "" $ comment' >>= (\c' -> Just $ " — " ++ c')
       c =
         case y of
-          ' ':'-':' ':'[':' ':']':' ':'…':note -> " - [x]" ++ note ++ comment'
-          ' ':'-':' ':'[':' ':']':note -> " - [x]" ++ note ++ comment'
+          ' ':'-':' ':'[':' ':']':' ':'…':note -> " - [x]" ++ note ++ comment''
+          ' ':'-':' ':'[':' ':']':note -> " - [x]" ++ note ++ comment''
           note -> note
       tmp = s ++ ".tmp"
   writeFile (s ++ ".tmp") (unlines $ x ++ c : t)
@@ -238,7 +244,7 @@ displayStatus s = do
       doing =
         fromMaybe "" $
         (\x -> Just $ "\n" ++ x) =<<
-        (listToMaybe $ filter F.doing $ displayNotes notes)
+        (listToMaybe $ filter F.doing $ displayNotes 0 notes)
       percent = done / (done + todo) * 100
       stats =
         [ (ternary palette)
