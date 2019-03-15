@@ -7,6 +7,7 @@ module Lib
 import Ansi
   ( Palette(primary, secondary, success, ternary, warning)
   , makeCrossed
+  , makeFaint
   , makeInverse
   , paint
   , palette
@@ -135,25 +136,27 @@ displayNotes :: Int -> [Task] -> [String]
 displayNotes level notes =
   concat $ zipWith (displayNote level $ length notes) [0 ..] notes
 
+displayBullet :: Int -> Int -> Int -> (String -> String) -> String
+displayBullet 0 total line style =
+  (alignRight total line) ++ (style $ paint ternary $ show line)
+displayBullet level total line style =
+  (replicate (level - 1) ' ') ++
+  (alignRight total line) ++ (style $ paint secondary $ show line)
+
 displayNote :: Int -> Int -> Int -> Task -> [String]
 displayNote level total line (Task Todo note Nothing children') =
-  ((replicate level ' ') ++
-   (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset) :
-  (displayNotes 1 children')
+  ((displayBullet level total line id) ++ " " ++ preen note ++ reset) :
+  (displayNotes ((length $ show total) + level + 1) children')
 displayNote level total line (Task Doing note Nothing children') =
-  ((replicate level ' ') ++
-   (makeInverse $
-    (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset)) :
-  (displayNotes 1 children')
+  ((displayBullet level total line makeInverse) ++ " " ++ preen note ++ reset) :
+  (displayNotes ((length $ show total) + level + 1) children')
 displayNote level total line (Task Done note Nothing children') =
-  ((replicate level ' ') ++
-   (makeCrossed $
-    (paint ternary $ alignRight total line) ++ " " ++ preen note ++ reset)) :
-  (displayNotes 1 children')
+  ((displayBullet level total line makeCrossed) ++
+   " " ++ (makeFaint $ preen note) ++ reset) :
+  (displayNotes ((length $ show total) + level + 1) children')
 
 alignRight :: Int -> Int -> String
-alignRight x n =
-  replicate (length (show $ x - 1) - length (show n)) ' ' ++ show n
+alignRight x n = replicate (length (show $ x - 1) - length (show n)) ' '
 
 markAsDone :: FilePath -> Int -> Maybe String -> IO ()
 markAsDone s n comment' = do
