@@ -9,13 +9,12 @@ data Style
   | Emphasized Char
   | Code
   | Comment
-  deriving (Show)
 
 data Text = Text
   { style :: Style
   , parsed :: String
   , rest :: String
-  } deriving (Show)
+  }
 
 getStyle :: Style -> Char -> (Style, String)
 getStyle Comment '—' = (Comment, "—")
@@ -29,10 +28,10 @@ getStyle Code '`' = (Normal, resetUnderline)
 getStyle s c = (s, [c])
 
 preen :: String -> String
-preen s = parsed $ parseNote $ Text Normal [] s
+preen s = parsed $ parseTask $ Text Normal [] s
 
-parseNote :: Text -> Text
-parseNote (Text s p (c:t)) = do
+parseTask :: Text -> Text
+parseTask (Text s p (c:t)) = do
   let (s1, c1) = getStyle s c
-  parseNote $ Text s1 (p ++ c1) t
-parseNote (Text s p ([])) = Text s p []
+  parseTask $ Text s1 (p ++ c1) t
+parseTask (Text s p ([])) = Text s p []

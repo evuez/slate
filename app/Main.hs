@@ -13,4 +13,4 @@ main = do
     opts =
       info
         (parser <**> helper)
-        (fullDesc <> progDesc "Slate" <> header "slate - a note taking tool.")
+        (fullDesc <> progDesc "Slate" <> header "slate - a task taking tool.")

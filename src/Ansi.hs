@@ -17,6 +17,9 @@ reset = "\x1B[0m"
 bold :: String
 bold = "\x1B[1m"
 
+faint :: String
+faint = "\x1B[2m"
+
 italic :: String
 italic = "\x1B[3m"
 
@@ -66,6 +69,9 @@ palette =
 
 makeBold :: String -> String
 makeBold s = bold ++ s ++ reset
+
+makeFaint :: String -> String
+makeFaint s = faint ++ s ++ reset
 
 makeUnderline :: String -> String
 makeUnderline s = underline ++ s ++ reset

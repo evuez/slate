@@ -4,15 +4,17 @@ module Filter
   , doing
   ) where
 
-done :: String -> Bool
-done (' ':'-':' ':'[':'x':']':_) = True
-done ('\x1B':'[':'9':'m':_) = True
-done _ = False
+import Task as T (State(..), Task(..))
 
-todo :: String -> Bool
-todo n = (not . done) n
+done :: T.Task -> Bool
+done (T.Task T.Done _ _ _) = True
+done (T.Task _ _ _ _) = False
 
-doing :: String -> Bool
-doing (' ':'-':' ':'[':' ':']':' ':'…':_) = True
-doing ('\x1B':'[':'7':'m':_) = True
-doing _ = False
+todo :: T.Task -> Bool
+todo (T.Task T.Todo _ _ _) = True
+todo (T.Task T.Doing _ _ _) = True
+todo (T.Task _ _ _ _) = False
+
+doing :: T.Task -> Bool
+doing (T.Task T.Doing _ _ _) = True
+doing (T.Task _ _ _ _) = False

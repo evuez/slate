@@ -8,50 +8,52 @@ import Options.Applicative
 
 type Slate = String
 
-type Note = String
+type Task = String
 
-type NoteId = Int
+type TaskId = Int
 
 type Filter = String
 
 type Comment = String
 
 data Command
-  = Add (Maybe Slate)
-        Note
+  = Add (Maybe Slate) Task
   | Display (Maybe Slate)
             (Maybe Filter)
   | Doing (Maybe Slate)
-          (Maybe NoteId)
+          (Maybe TaskId)
   | Done (Maybe Slate)
-         (Maybe NoteId)
+         (Maybe TaskId)
          (Maybe Comment)
   | Edit (Maybe Slate)
   | Remove (Maybe Slate)
-           NoteId
+           TaskId
   | Rename Slate
            Slate
   | Status (Maybe Slate)
   | Sync
   | Todo (Maybe Slate)
-         (Maybe NoteId)
+         (Maybe TaskId)
   | Wipe (Maybe Slate)
          (Maybe Filter)
   deriving (Eq, Show)
 
-name :: Parser (Maybe String)
+name :: Parser (Maybe Slate)
 name =
   optional
     (option
        str
        (long "name" <> short 'n' <> metavar "SLATE" <> help "Name of the slate."))
 
+taskId :: Parser TaskId
+taskId = argument auto (metavar "TASK ID")
+
 add :: Parser Command
-add = Add <$> name <*> argument str (metavar "NOTE")
+add = Add <$> name <*> argument str (metavar "TASK")
 
 done :: Parser Command
 done =
-  Done <$> name <*> optional (argument auto (metavar "NOTE ID")) <*>
+  Done <$> name <*> optional taskId <*>
   optional
     (option
        str
@@ -59,16 +61,16 @@ done =
         help "Additional comment."))
 
 todo :: Parser Command
-todo = Todo <$> name <*> optional (argument auto (metavar "NOTE ID"))
+todo = Todo <$> name <*> optional taskId
 
 doing :: Parser Command
-doing = Doing <$> name <*> optional (argument auto (metavar "NOTE ID"))
+doing = Doing <$> name <*> optional taskId
 
 edit :: Parser Command
 edit = Edit <$> name
 
 remove :: Parser Command
-remove = Remove <$> name <*> argument auto (metavar "NOTE ID")
+remove = Remove <$> name <*> taskId
 
 display :: Parser Command
 display =
@@ -76,7 +78,7 @@ display =
   optional
     (option
        str
-       (long "only" <> short 'o' <> help "Display only done / todo notes."))
+       (long "only" <> short 'o' <> help "Display only done / todo tasks."))
 
 rename :: Parser Command
 rename =
@@ -89,7 +91,7 @@ wipe =
   optional
     (option
        str
-       (long "only" <> short 'o' <> help "Wipe only done / todo notes."))
+       (long "only" <> short 'o' <> help "Wipe only done / todo tasks."))
 
 status :: Parser Command
 status = Status <$> name
@@ -100,29 +102,29 @@ sync = Sync
 parser :: Parser Command
 parser =
   subparser
-    (command "add" (info add (progDesc "Add a note.")) <>
+    (command "add" (info add (progDesc "Add a task.")) <>
      command
        "done"
        (info
           done
           (progDesc
-             "Mark a note as done when given a note ID, display done notes otherwise.")) <>
+             "Mark a task as done when given a task ID, display done tasks otherwise.")) <>
      command
        "todo"
        (info
           todo
           (progDesc
-             "Mark a note as todo when given a note ID, display todo notes otherwise.")) <>
+             "Mark a task as todo when given a task ID, display todo tasks otherwise.")) <>
      command
        "doing"
        (info
           doing
           (progDesc
-             "Toggle highlighting on a note when given a note ID, display notes marked as doing otherwise.")) <>
+             "Toggle highlighting on a task when given a task ID, display tasks marked as doing otherwise.")) <>
      command
        "edit"
        (info edit (progDesc "Open the slate in the default editor.")) <>
-     command "remove" (info remove (progDesc "Remove a note.")) <>
+     command "remove" (info remove (progDesc "Remove a task.")) <>
      command "display" (info display (progDesc "Display a slate.")) <>
      command "rename" (info rename (progDesc "Rename a slate.")) <>
      command "wipe" (info wipe (progDesc "Wipe a slate.")) <>
