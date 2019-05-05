@@ -70,6 +70,9 @@ palette =
 makeBold :: String -> String
 makeBold s = bold ++ s ++ reset
 
+makeItalic :: String -> String
+makeItalic s = italic ++ s ++ reset
+
 makeFaint :: String -> String
 makeFaint s = faint ++ s ++ reset
 

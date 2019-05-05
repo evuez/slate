@@ -54,7 +54,7 @@ slateName = do
   let headOrFail =
         \x ->
           maybe
-            (error "The .slate file in this directory shouldn't be empty.")
+            (error "Found a .slate file in the current directory but it is empty.")
             id
             (listToMaybe x)
   doesFileExist (d ++ "/.slate") >>= \case

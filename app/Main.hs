@@ -1,7 +1,7 @@
 module Main where
 
 import Data.Semigroup ((<>))
-import Lib
+import Lib (execute, initialize, parser)
 import Options.Applicative
 
 main :: IO ()

@@ -1,6 +1,7 @@
 module Command
   ( parser
   , Command(..)
+  , Slate
   ) where
 
 import Data.Semigroup ((<>))
@@ -17,7 +18,8 @@ type Filter = String
 type Comment = String
 
 data Command
-  = Add (Maybe Slate) Task
+  = Add (Maybe Slate)
+        Task
   | Display (Maybe Slate)
             (Maybe Filter)
   | Doing (Maybe Slate)
