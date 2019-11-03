@@ -5,6 +5,7 @@ module Config
   ( getConfigValue
   , configDirectory
   , getSlatePath
+  , config
   ) where
 
 import qualified Data.HashMap.Lazy as M (lookup)
@@ -14,16 +15,14 @@ import Data.String.Conversions (convertString)
 import System.Directory (doesFileExist, getCurrentDirectory, getHomeDirectory)
 import System.FilePath.Posix (takeBaseName)
 import Text.Toml (parseTomlDoc)
-import Text.Toml.Types (Node(VString), Node(VTable))
+import Text.Toml.Types (Node(VString), Node(VTable), Table)
 
 class GetConfig a where
   getConfigValue :: (String, String) -> IO a
 
 instance GetConfig (Maybe String) where
   getConfigValue (s, k) = do
-    f <- configFile
-    config <- readFile f
-    let Right c = parseTomlDoc "" (fromString config)
+    c <- config
     return $
       case (M.lookup (fromString s) c) of
         Just (VTable t) ->
@@ -37,6 +36,11 @@ instance GetConfig String where
     f <- configFile
     c <- getConfigValue (s, k)
     return $ maybe (error $ "Key `" ++ k ++ "` not found in " ++ f ++ ".") id c
+
+config :: IO Table
+config =
+  (\(Right x) -> x) <$>
+  (parseTomlDoc "" <$> fromString <$> (readFile =<< configFile))
 
 configDirectory :: IO String
 configDirectory = do
@@ -54,7 +58,8 @@ slateName = do
   let headOrFail =
         \x ->
           maybe
-            (error "Found a .slate file in the current directory but it is empty.")
+            (error
+               "Found a .slate file in the current directory but it is empty.")
             id
             (listToMaybe x)
   doesFileExist (d ++ "/.slate") >>= \case
