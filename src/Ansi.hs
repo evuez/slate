@@ -3,9 +3,9 @@ module Ansi where
 progress :: Double -> Int -> String
 progress percent size =
   makeInverse
-    ((primary palette) ++
-     (replicate sizeCompleted ' ') ++
-     (secondary palette) ++ (replicate sizeRemaining ' '))
+    (primary palette ++
+     replicate sizeCompleted ' ' ++
+     secondary palette ++ replicate sizeRemaining ' ')
   where
     size' = fromIntegral size :: Double
     sizeCompleted = round $ size' * percent / 100
@@ -86,4 +86,4 @@ makeCrossed :: String -> String
 makeCrossed s = crossed ++ s ++ reset
 
 paint :: (Palette -> String) -> String -> String
-paint f s = (f palette) ++ s ++ reset
+paint f s = f palette ++ s ++ reset

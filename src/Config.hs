@@ -25,9 +25,9 @@ instance GetConfig (Maybe String) where
     config <- readFile f
     let Right c = parseTomlDoc "" (fromString config)
     return $
-      case (M.lookup (fromString s) c) of
+      case M.lookup (fromString s) c of
         Just (VTable t) ->
-          case (M.lookup (fromString k) t) of
+          case M.lookup (fromString k) t of
             Just (VString v) -> Just (convertString v)
             _ -> Nothing
         _ -> Nothing
@@ -51,12 +51,11 @@ configFile = do
 slateName :: IO String
 slateName = do
   d <- getCurrentDirectory
-  let headOrFail =
-        \x ->
-          maybe
-            (error "Found a .slate file in the current directory but it is empty.")
-            id
-            (listToMaybe x)
+  let headOrFail x =
+        maybe
+          (error "Found a .slate file in the current directory but it is empty.")
+          id
+          (listToMaybe x)
   doesFileExist (d ++ "/.slate") >>= \case
     True -> readFile (d ++ "/.slate") >>= (return . headOrFail . lines)
     False -> return $ takeBaseName d
