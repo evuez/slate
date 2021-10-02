@@ -138,6 +138,15 @@ test_status () {
   assert_var_contains "$status" "                         "
 }
 
+test_list () {
+  echo "Test: list"
+
+  list=$(slate list)
+
+  assert_lines_count 1
+  assert_var_contains "$list" "slate-test"
+}
+
 setup
 
 test_add
@@ -147,4 +156,5 @@ test_doing
 test_remove
 test_display
 test_status
+test_list
 test_wipe
