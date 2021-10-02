@@ -4,7 +4,6 @@ module Command
   , Slate
   ) where
 
-import Data.Semigroup ((<>))
 import Options.Applicative
 
 type Slate = String
@@ -28,6 +27,7 @@ data Command
          (Maybe TaskId)
          (Maybe Comment)
   | Edit (Maybe Slate)
+  | List
   | Remove (Maybe Slate)
            TaskId
   | Rename Slate
@@ -71,6 +71,9 @@ doing = Doing <$> name <*> optional taskId
 edit :: Parser Command
 edit = Edit <$> name
 
+list :: Parser Command
+list = pure List
+
 remove :: Parser Command
 remove = Remove <$> name <*> taskId
 
@@ -98,8 +101,8 @@ wipe =
 status :: Parser Command
 status = Status <$> name
 
-sync :: Command
-sync = Sync
+sync :: Parser Command
+sync = pure Sync
 
 parser :: Parser Command
 parser =
@@ -126,9 +129,10 @@ parser =
      command
        "edit"
        (info edit (progDesc "Open the slate in the default editor.")) <>
+     command "list" (info list (progDesc "List all slates.")) <>
      command "remove" (info remove (progDesc "Remove a task.")) <>
      command "display" (info display (progDesc "Display a slate.")) <>
      command "rename" (info rename (progDesc "Rename a slate.")) <>
      command "wipe" (info wipe (progDesc "Wipe a slate.")) <>
      command "status" (info status (progDesc "Display the status of a slate.")) <>
-     command "sync" (info (pure sync) (progDesc "Sync every slate.")))
+     command "sync" (info sync (progDesc "Sync every slate.")))

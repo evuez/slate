@@ -8,7 +8,7 @@ module Config
   ) where
 
 import qualified Data.HashMap.Lazy as M (lookup)
-import Data.Maybe (listToMaybe)
+import Data.Maybe (listToMaybe, fromMaybe)
 import Data.String (fromString)
 import Data.String.Conversions (convertString)
 import System.Directory (doesFileExist, getCurrentDirectory, getHomeDirectory)
@@ -36,7 +36,7 @@ instance GetConfig String where
   getConfigValue (s, k) = do
     f <- configFile
     c <- getConfigValue (s, k)
-    return $ maybe (error $ "Key `" ++ k ++ "` not found in " ++ f ++ ".") id c
+    return $ fromMaybe (error $ "Key `" ++ k ++ "` not found in " ++ f ++ ".") c
 
 configDirectory :: IO String
 configDirectory = do
@@ -52,9 +52,8 @@ slateName :: IO String
 slateName = do
   d <- getCurrentDirectory
   let headOrFail x =
-        maybe
+        fromMaybe
           (error "Found a .slate file in the current directory but it is empty.")
-          id
           (listToMaybe x)
   doesFileExist (d ++ "/.slate") >>= \case
     True -> readFile (d ++ "/.slate") >>= (return . headOrFail . lines)

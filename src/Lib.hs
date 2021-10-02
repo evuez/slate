@@ -11,11 +11,13 @@ import Ansi
   , progress
   , reset
   )
+import Data.List (sort)
+import System.FilePath (stripExtension)
 import qualified Command as C (Command(..), Slate, parser)
 import Config (configDirectory, getConfigValue, getSlatePath)
-import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
 import qualified Filter as F (doing, done, todo)
-import System.Directory (createDirectoryIfMissing, removeFile, renameFile)
+import System.Directory (createDirectoryIfMissing, removeFile, renameFile, listDirectory)
 import System.Exit (ExitCode(ExitFailure, ExitSuccess))
 import System.Process
   ( StdStream(NoStream)
@@ -49,6 +51,7 @@ execute (C.Doing s (Just ti)) = getSlatePath s >>= (`markAsDoing` ti)
 execute (C.Doing s Nothing) =
   getSlatePath s >>= (\x -> displaySlate x (Just "doing"))
 execute (C.Edit s) = getSlatePath s >>= editSlate
+execute C.List = listSlates
 execute (C.Remove s ti) = getSlatePath s >>= (`removeTask` ti)
 execute (C.Display s f) = getSlatePath s >>= (`displaySlate` f)
 execute (C.Rename sc sn) = renameSlate sc sn
@@ -177,3 +180,8 @@ syncSlates = do
   (_, _, _, h) <- createProcess (shell c) {cwd = Just d}
   _ <- waitForProcess h
   putStrLn $ paint success "Done syncing ✔"
+
+listSlates :: IO ()
+listSlates = do
+  fs <- configDirectory >>= listDirectory
+  mapM_ putStrLn $ sort $ mapMaybe (stripExtension "md") fs
