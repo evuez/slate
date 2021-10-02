@@ -31,4 +31,4 @@ parseTask :: Text -> Text
 parseTask (Text s p (c:t)) = do
   let (s1, c1) = getStyle s c
   parseTask $ Text s1 (p ++ c1) t
-parseTask (Text s p ([])) = Text s p []
+parseTask (Text s p []) = Text s p []

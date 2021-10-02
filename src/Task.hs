@@ -35,7 +35,7 @@ dumpTasks tasks = unlines $ map dumpTask tasks
 
 dumpTask :: Task -> String
 dumpTask (Task _ status' text' comment') =
-  (mconcat [" - ", dumpStatus status', text', dumpComment comment'])
+  mconcat [" - ", dumpStatus status', text', dumpComment comment']
 
 dumpStatus :: Status -> String
 dumpStatus Todo = "[ ] "
@@ -48,7 +48,7 @@ dumpComment Nothing = ""
 
 -- Load
 loadTasks :: Int -> [Task] -> [String] -> [Task]
-loadTasks l tasks (x:xs) = loadTasks (l + 1) ((buildTask x l) : tasks) xs
+loadTasks l tasks (x:xs) = loadTasks (l + 1) (buildTask x l : tasks) xs
 loadTasks _ tasks [] = reverse tasks
 
 buildTask :: String -> Int -> Task
@@ -73,21 +73,20 @@ showTasks tasks = map (showTask $ length tasks) tasks
 
 showTask :: Int -> Task -> String
 showTask total (Task line' Todo text' comment') =
-  (showLine total line' id) ++ " " ++ (showText text' comment' id) ++ reset
+  showLine total line' id ++ " " ++ showText text' comment' id ++ reset
 showTask total (Task line' Doing text' comment') =
-  (showLine total line' makeInverse) ++
-  " " ++ (showText text' comment' id) ++ reset
+  showLine total line' makeInverse ++ " " ++ showText text' comment' id ++ reset
 showTask total (Task line' Done text' comment') =
-  (showLine total line' makeCrossed) ++
-  " " ++ (showText text' comment' makeFaint) ++ reset
+  showLine total line' makeCrossed ++
+  " " ++ showText text' comment' makeFaint ++ reset
 
 showLine :: Int -> Int -> (String -> String) -> String
 showLine total line' style =
-  (alignRight total line') ++ (style $ paint ternary $ show line')
+  alignRight total line' ++ style (paint ternary $ show line')
   where
     alignRight x n = replicate (length (show $ x - 1) - length (show n)) ' '
 
 showText :: String -> Maybe String -> (String -> String) -> String
 showText text' (Just comment') style =
-  style $ preen text' ++ (makeItalic $ " — " ++ comment')
+  style $ preen text' ++ makeItalic (" — " ++ comment')
 showText text' Nothing style = style $ preen text'

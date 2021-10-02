@@ -42,26 +42,26 @@ execute (C.Done s (Just ti) comment) =
   getSlatePath s >>= (\x -> markAsDone x ti comment)
 execute (C.Done s Nothing _) =
   getSlatePath s >>= (\x -> displaySlate x (Just "done"))
-execute (C.Todo s (Just ti)) = getSlatePath s >>= (\x -> markAsTodo x ti)
+execute (C.Todo s (Just ti)) = getSlatePath s >>= (`markAsTodo` ti)
 execute (C.Todo s Nothing) =
   getSlatePath s >>= (\x -> displaySlate x (Just "todo"))
-execute (C.Doing s (Just ti)) = getSlatePath s >>= (\x -> markAsDoing x ti)
+execute (C.Doing s (Just ti)) = getSlatePath s >>= (`markAsDoing` ti)
 execute (C.Doing s Nothing) =
   getSlatePath s >>= (\x -> displaySlate x (Just "doing"))
 execute (C.Edit s) = getSlatePath s >>= editSlate
-execute (C.Remove s ti) = getSlatePath s >>= (\x -> removeTask x ti)
-execute (C.Display s f) = getSlatePath s >>= (\x -> displaySlate x f)
+execute (C.Remove s ti) = getSlatePath s >>= (`removeTask` ti)
+execute (C.Display s f) = getSlatePath s >>= (`displaySlate` f)
 execute (C.Rename sc sn) = renameSlate sc sn
 execute (C.Wipe s Nothing) = getSlatePath s >>= removeFile
-execute (C.Wipe s (Just f)) = getSlatePath s >>= (\x -> wipeSlate x f)
-execute (C.Status s) = getSlatePath s >>= (\x -> displayStatus x)
-execute (C.Sync) = syncSlates
+execute (C.Wipe s (Just f)) = getSlatePath s >>= (`wipeSlate` f)
+execute (C.Status s) = getSlatePath s >>= displayStatus
+execute C.Sync = syncSlates
 
 initialize :: IO ()
-initialize = configDirectory >>= (\c -> createDirectoryIfMissing True c)
+initialize = configDirectory >>= createDirectoryIfMissing True
 
 readTasks :: FilePath -> IO [T.Task]
-readTasks s = T.loadTasks 0 [] <$> lines <$> readFile s
+readTasks s = T.loadTasks 0 [] . lines <$> readFile s
 
 writeTasks :: FilePath -> [T.Task] -> IO ()
 writeTasks s tasks = do
@@ -70,23 +70,23 @@ writeTasks s tasks = do
   renameFile tmp s
 
 displaySlate :: FilePath -> Maybe String -> IO ()
-displaySlate s Nothing = putStr =<< unlines <$> T.showTasks <$> readTasks s
+displaySlate s Nothing = putStr =<< (unlines . T.showTasks <$> readTasks s)
 displaySlate s (Just "done") =
-  putStr =<< unlines <$> T.showTasks <$> filter F.done <$> readTasks s
+  putStr =<< (unlines . T.showTasks <$> filter F.done) <$> readTasks s
 displaySlate s (Just "todo") =
-  putStr =<< unlines <$> T.showTasks <$> filter F.todo <$> readTasks s
+  putStr =<< (unlines . T.showTasks <$> filter F.todo) <$> readTasks s
 displaySlate s (Just "doing") =
-  putStr =<< unlines <$> T.showTasks <$> filter F.doing <$> readTasks s
+  putStr =<< (unlines . T.showTasks <$> filter F.doing) <$> readTasks s
 displaySlate _ (Just f) = putStrLn $ "\"" ++ f ++ "\" is not a valid filter."
 
 markAsDone :: FilePath -> Int -> Maybe String -> IO ()
 markAsDone s ti comment = do
-  (x, t:xs) <- splitAt ti <$> (readTasks s)
+  (x, t:xs) <- splitAt ti <$> readTasks s
   writeTasks s $ x ++ (t {T.status = T.Done, T.comment = comment}) : xs
 
 markAsTodo :: FilePath -> Int -> IO ()
 markAsTodo s ti = do
-  (x, t:xs) <- splitAt ti <$> (readTasks s)
+  (x, t:xs) <- splitAt ti <$> readTasks s
   writeTasks s $ x ++ (t {T.status = T.Todo}) : xs
 
 markAsDoing :: FilePath -> Int -> IO ()
@@ -131,18 +131,18 @@ displayStatus s = do
       doing =
         fromMaybe "" $
         (\x -> Just $ "\n" ++ x) =<<
-        (listToMaybe $ T.showTasks $ filter F.doing tasks)
+        listToMaybe (T.showTasks $ filter F.doing tasks)
       percent = done / (done + todo) * 100
       stats =
-        [ (ternary palette)
+        [ ternary palette
         , show (round percent :: Integer)
         , "% · "
         , reset
-        , (primary palette)
+        , primary palette
         , show (round done :: Integer)
         , reset
         , " done · "
-        , (secondary palette)
+        , secondary palette
         , show (round todo :: Integer)
         , reset
         , " todo — "
@@ -166,8 +166,8 @@ getSyncStatus s = do
       e <- waitForProcess h
       return $
         case e of
-          ExitSuccess -> ((success palette), "sync ✔")
-          (ExitFailure _) -> ((warning palette), "sync ✘")
+          ExitSuccess -> (success palette, "sync ✔")
+          (ExitFailure _) -> (warning palette, "sync ✘")
     Nothing -> return ("", "")
 
 syncSlates :: IO ()
