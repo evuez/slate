@@ -96,7 +96,7 @@ Lists are stored in `~/.config/slate/` and their default name is the name of you
 
 The following configuration options can be set in `~/.config/slate/config.toml` (you'll have to create this file).
 
-You can check out [config.example.toml](https://github.com/evuez/slate/blob/master/config.example.toml) for a configuration example.
+You can check out [config.example.toml](https://github.com/evuez/slate/blob/main/config.example.toml) for a configuration example.
 
 ### Callbacks
 
@@ -114,7 +114,7 @@ key2 = value2
 You can use `slate sync` to synchronize your slates. There's no default configuration for this command, so for it to work you'll have to add your own sync command, for example:
 
 ```toml
-sync = "git add . && git commit -m 'Update slates'; git pull --rebase origin master && git push origin master"
+sync = "git add . && git commit -m 'Update slates'; git pull --rebase origin main && git push origin main"
 ```
 
 This would stage & commit every updates in `~/.config/slate/`, update your local copy and push your updates to the `origin` remote.
